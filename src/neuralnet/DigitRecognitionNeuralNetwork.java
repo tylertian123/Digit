@@ -56,7 +56,7 @@ public class DigitRecognitionNeuralNetwork {
 		return sigmoid(z) * (1 - sigmoid(z));
 	}
 	static double costDerivative(double expected, double actual) {
-		return 2 * (expected - actual);
+		return 2 * (actual - expected);
 	}
 	
 	public DigitRecognitionNeuralNetwork(int[] neuronCounts) {
