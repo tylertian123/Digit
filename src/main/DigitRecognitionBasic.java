@@ -13,8 +13,11 @@ public class DigitRecognitionBasic {
 		try {
 			MNISTImage[] trainingData = MNISTLoader.loadTrainingImages();
 			MNISTImage[] evalData = MNISTLoader.loadTestingImages();
-			DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 40, 10});
-			net.SGD(trainingData, 10, 2.0, 30, evalData);
+			DigitRecognitionNeuralNetwork net = 
+					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 30, 10}, 
+							DigitRecognitionNeuralNetwork.SIGMOID_ACTIVATION,
+							DigitRecognitionNeuralNetwork.QUADRATIC_COST);
+			net.SGD(trainingData, 10, 0.5, 30, evalData);
 		} 
 		catch (IOException e) {
 			e.printStackTrace();

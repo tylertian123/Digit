@@ -8,6 +8,29 @@ import mnist.MNISTImage;
 
 public class DigitRecognitionNeuralNetwork {
 	
+	static class SigmoidActivation implements ActivationFunction {
+		@Override
+		public double activation(double z) {
+			return 1.0 / (1.0 + Math.exp(-z));
+		}
+
+		@Override
+		public double activationDerivative(double z) {
+			return activation(z) * (1 - activation(z));
+		}
+	}
+	static class QuadraticCost implements CostFunction {
+
+		@Override
+		public double costDerivative(double y, double a) {
+			return (a - y);
+		}
+		
+	}
+
+	public static final ActivationFunction SIGMOID_ACTIVATION = new SigmoidActivation();
+	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
+	
 	/*
 	 * Although the input layer does not have weights and biases, space is still allocated for them
 	 * so the indices are less confusing
@@ -24,6 +47,9 @@ public class DigitRecognitionNeuralNetwork {
 	//e.g. weights[1][1][2] is the weight of the connection between
 	//the 2nd neuron in the 1st hidden layer and the 3rd neuron in the layer before it
 	public double[][][] weights;
+	//The activation and cost functions
+	protected final ActivationFunction activationFunction;
+	protected final CostFunction costFunction;
 	
 	static int getMax(int[] arr) {
 		int max = 0;
@@ -49,17 +75,9 @@ public class DigitRecognitionNeuralNetwork {
 		return result;
 	}
 	
-	static double sigmoid(double z) {
-		return 1.0 / (1.0 + Math.exp(-z));
-	}
-	static double sigmoidDerivative(double z) {
-		return sigmoid(z) * (1 - sigmoid(z));
-	}
-	static double costDerivative(double expected, double actual) {
-		return 2 * (actual - expected);
-	}
-	
-	public DigitRecognitionNeuralNetwork(int[] neuronCounts) {
+	public DigitRecognitionNeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
+		activationFunction = activation;
+		costFunction = cost;
 		this.layers = neuronCounts.length;
 		this.neuronCounts = neuronCounts;
 		neuronMax = getMax(neuronCounts);
@@ -88,7 +106,7 @@ public class DigitRecognitionNeuralNetwork {
 		
 		for(int i = 1; i < layers; i ++) {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
-				activations[j] = sigmoid(
+				activations[j] = activationFunction.activation(
 						dotProduct(lastActivations, weights[i][j], neuronCounts[i - 1])
 						+ biases[i][j]);
 				//System.out.println("Layer " + i + " neuron " + j + ": " + dotProduct(lastActivations, weights[i][j], neuronCounts[i - 1]));
@@ -174,13 +192,13 @@ public class DigitRecognitionNeuralNetwork {
 				for(int i = 1; i < layers; i ++) {
 					for(int j = 0; j < neuronCounts[i]; j ++) {
 						z[i][j] = dotProduct(a[i - 1], weights[i][j], neuronCounts[i - 1]) + biases[i][j];
-						a[i][j] = sigmoid(z[i][j]);
+						a[i][j] = activationFunction.activation(z[i][j]);
 					}
 				}
 				//Calculate error for output layer
 				for(int j = 0; j < neuronCounts[layers - 1]; j ++) {
-					e[layers - 1][j] = sigmoidDerivative(z[layers - 1][j]) 
-							* costDerivative(y[j], a[layers - 1][j]);
+					e[layers - 1][j] = activationFunction.activationDerivative(z[layers - 1][j]) 
+							* costFunction.costDerivative(y[j], a[layers - 1][j]);
 					//System.out.println(e[layers - 1][j]);
 				}
 				//Backpropagate
