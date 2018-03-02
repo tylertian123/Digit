@@ -17,7 +17,7 @@ public class DigitRecognitionBasic {
 					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 30, 10}, 
 							DigitRecognitionNeuralNetwork.SIGMOID_ACTIVATION,
 							DigitRecognitionNeuralNetwork.QUADRATIC_COST);
-			net.SGD(trainingData, 10, 0.5, 30, evalData);
+			net.SGD(trainingData, 10, 3.0, 30, evalData);
 		} 
 		catch (IOException e) {
 			e.printStackTrace();

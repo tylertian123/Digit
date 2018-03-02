@@ -20,7 +20,7 @@ public class MNISTImage {
 	public double[] asNeuralNetworkInput() {
 		double[] output = new double[PIXEL_COUNT];
 		for(int i = 0; i < PIXEL_COUNT; i ++) {
-			output[i] = (double) (((int) data[i]) & 0xFF) / 255;
+			output[i] = ((double) (((int) data[i]) & 0xFF)) / 255;
 			//System.out.println(output[i]);
 		}
 		return output;

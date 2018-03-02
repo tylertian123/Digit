@@ -3,6 +3,7 @@ package neuralnet;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import mnist.MNISTImage;
 
@@ -76,6 +77,7 @@ public class DigitRecognitionNeuralNetwork {
 	}
 	
 	public DigitRecognitionNeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
+		Random r = new Random();
 		activationFunction = activation;
 		costFunction = cost;
 		this.layers = neuronCounts.length;
@@ -89,9 +91,9 @@ public class DigitRecognitionNeuralNetwork {
 		//No need to initialize the first layer's weights and biases
 		for(int i = 1; i < layers; i ++) {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
-				biases[i][j] = Math.random() * 2.0 - 1;
+				biases[i][j] = r.nextGaussian();
 				for(int k = 0; k < neuronCounts[i - 1]; k ++)
-					weights[i][j][k] = Math.random() * 2.0 - 1;
+					weights[i][j][k] = r.nextGaussian();
 			}
 		}
 	}
