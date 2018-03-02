@@ -150,11 +150,17 @@ public class DigitRecognitionNeuralNetwork {
 				System.out.println("Learning...");
 			}
 			
-			for(int i = 0; i < trainingData.length; i += batchSize) {
+			/*for(int i = 0; i < trainingData.length; i += batchSize) {
 				MNISTImage[] miniBatch = new MNISTImage[batchSize];
 				for(int j = 0; j < batchSize && i + j < trainingData.length; j ++) {
 					miniBatch[j] = trainingData[i + j];
 				}
+				learnFromMiniBatch(miniBatch, learningRate);
+			}*/
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate);
 			}
 			
