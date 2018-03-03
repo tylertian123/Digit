@@ -7,6 +7,9 @@ import java.util.Random;
 
 import mnist.MNISTImage;
 
+/*
+ * A neural network that classifies MNIST database digits
+ */
 public class DigitRecognitionNeuralNetwork {
 	//Pre-defined activation and cost functions
 	static class SigmoidActivation implements ActivationFunction {
@@ -36,18 +39,18 @@ public class DigitRecognitionNeuralNetwork {
 	 * Although the input layer does not have weights and biases, space is still allocated for them
 	 * so the indices are less confusing
 	 */
-	public final int layers;
+	protected final int layers;
 	//the number of neurons in each layer
-	public int[] neuronCounts;
+	protected int[] neuronCounts;
 	//most number of neurons in a layer
-	public final int neuronMax;
+	protected final int neuronMax;
 	//bias of each neuron, from layer and number
 	//e.g. biases[1][1] is the bias of the 2nd neuron in the 1st hidden layer
-	public double[][] biases;
+	protected double[][] biases;
 	//weight of each connection, from layer, number and number
 	//e.g. weights[1][1][2] is the weight of the connection between
 	//the 2nd neuron in the 1st hidden layer and the 3rd neuron in the layer before it
-	public double[][][] weights;
+	protected double[][][] weights;
 	//The activation and cost functions
 	protected final ActivationFunction activationFunction;
 	protected final CostFunction costFunction;
@@ -76,6 +79,39 @@ public class DigitRecognitionNeuralNetwork {
 		return result;
 	}
 	
+	//Creates a non-rectangular array
+	static double[][] createJaggedArray(int[] lengths) {
+		double[][] arr = new double[lengths.length][];
+		for(int i = 0; i < arr.length; i ++)
+			arr[i] = new double[lengths[i]];
+		return arr;
+	}
+	//Used to create a jagged array of rectangular arrays
+	static double[][][] createJaggedArray3d(int[] widths, int[] heights) {
+		if(widths.length != heights.length)
+			throw new IllegalArgumentException("Dimension arrays provided are not of the same length");
+		double[][][] arr = new double[widths.length][][];
+		for(int i = 0; i < arr.length; i ++)
+			arr[i] = new double[widths[i]][heights[i]];
+		return arr;
+	}
+	//Creates a 3-dimensional array in the shape of the weights to store them in
+	double[][][] createWeightsArray() {
+		int[] sizes2 = new int[layers];
+		for(int i = 0; i < layers - 1; i ++)
+			sizes2[i + 1] = neuronCounts[i];
+		//First layer contains no weights, so each neuron is connected to 0 others
+		sizes2[0] = 0;
+		return createJaggedArray3d(neuronCounts, sizes2);
+	}
+	//Creates a 2-dimensional array in the shape of the biases to store them in
+	double[][] createBiasesArray() {
+		return createJaggedArray(neuronCounts);
+	}
+	
+	//Creates the network and initializes each weight and bias with a normal distribution random number
+	//with mean of 0 and standard deviation 1
+	//The activation and cost are also custom specified
 	public DigitRecognitionNeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
 		Random r = new Random();
 		activationFunction = activation;
@@ -83,9 +119,9 @@ public class DigitRecognitionNeuralNetwork {
 		this.layers = neuronCounts.length;
 		this.neuronCounts = neuronCounts;
 		neuronMax = getMax(neuronCounts);
-		//The first (input) layer has no biases
-		this.biases = new double[layers][neuronMax];
-		this.weights = new double[layers][neuronMax][neuronMax];
+		//The first (input) layer has no biases, but memory is still allocated to keep indices simple
+		this.biases = createBiasesArray();
+		this.weights = createWeightsArray();
 		//sets each weight and bias to a random real number between
 		//0 and 1
 		//No need to initialize the first layer's weights and biases
@@ -98,6 +134,7 @@ public class DigitRecognitionNeuralNetwork {
 		}
 	}
 	
+	//Feedforwards and outputs the 'classification' of the digit
 	public int classify(MNISTImage img) {
 		double[] lastActivations = new double[neuronMax];
 		double[] input = img.asNeuralNetworkInput();
@@ -123,6 +160,7 @@ public class DigitRecognitionNeuralNetwork {
 		return maxIndex;
 	}
 	
+	//Stochastic Gradient Descent
 	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs) {
 		SGD(trainingData, batchSize, learningRate, epochs, null);
 	}
@@ -147,13 +185,7 @@ public class DigitRecognitionNeuralNetwork {
 				System.out.println("Learning...");
 			}
 			
-			/*for(int i = 0; i < trainingData.length; i += batchSize) {
-				MNISTImage[] miniBatch = new MNISTImage[batchSize];
-				for(int j = 0; j < batchSize && i + j < trainingData.length; j ++) {
-					miniBatch[j] = trainingData[i + j];
-				}
-				learnFromMiniBatch(miniBatch, learningRate);
-			}*/
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
 				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
 				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
@@ -174,11 +206,14 @@ public class DigitRecognitionNeuralNetwork {
 			}
 		}
 	}
-	
+	//Uses gradient descent and backpropagation to learn from a mini-batch
 	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate) {
+		//The size of the batch
+		//Only incremented for values that are non-null
 		int batchSize = 0;
-		double[][] biasDerivativesTotal = new double[layers][neuronMax];
-		double[][][] weightDerivativesTotal = new double[layers][neuronMax][neuronMax];
+		//Summed dC/db and dC/dw
+		double[][] biasDerivativesTotal = createBiasesArray();
+		double[][][] weightDerivativesTotal = createWeightsArray();
 		
 		for(MNISTImage trainingSample : miniBatch) {
 			if(trainingSample != null) {
@@ -186,25 +221,28 @@ public class DigitRecognitionNeuralNetwork {
 				//Expected output
 				double[] y = trainingSample.generateExpectedOutput();
 				//Activations
-				double[][] a = new double[layers][neuronMax];
+				double[][] a = createBiasesArray();
 				//Weighted sums
-				double[][] z = new double[layers][neuronMax];
+				double[][] z = createBiasesArray();
 				//Errors
-				double[][] e = new double[layers][neuronMax];
+				double[][] e = createBiasesArray();
 				
 				//Feedforward
 				a[0] = trainingSample.asNeuralNetworkInput();
 				for(int i = 1; i < layers; i ++) {
 					for(int j = 0; j < neuronCounts[i]; j ++) {
-						z[i][j] = dotProduct(a[i - 1], weights[i][j], neuronCounts[i - 1]) + biases[i][j];
+						//Dot product of last layer's activations with this layer's weights added to the bias 
+						z[i][j] = dotProduct(a[i - 1], weights[i][j]) + biases[i][j];
+						//Put through the activation function
 						a[i][j] = activationFunction.activation(z[i][j]);
 					}
 				}
 				//Calculate error for output layer
 				for(int j = 0; j < neuronCounts[layers - 1]; j ++) {
+					//The error for a neuron in the output layer =
+					//activation'(z) * dC/da
 					e[layers - 1][j] = activationFunction.activationDerivative(z[layers - 1][j]) 
 							* costFunction.costDerivative(y[j], a[layers - 1][j]);
-					//System.out.println(e[layers - 1][j]);
 				}
 				//Backpropagate
 				for(int i = layers - 2; i >= 0; i --) {
@@ -212,8 +250,11 @@ public class DigitRecognitionNeuralNetwork {
 						//Perform the sigma
 						double err = 0.0;
 						for(int k = 0; k < neuronCounts[i + 1]; k ++) {
+							//The error of a neuron in the next layer * the weight connecting them
 							err += e[i + 1][k] * weights[i + 1][k][j];
 						}
+						//dC/da * da/dz = dC/dz
+						err *= activationFunction.activationDerivative(z[i][j]);
 						e[i][j] = err;
 					}
 				}
