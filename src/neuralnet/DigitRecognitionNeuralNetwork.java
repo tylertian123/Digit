@@ -7,7 +7,7 @@ import java.util.List;
 import mnist.MNISTImage;
 
 public class DigitRecognitionNeuralNetwork {
-	
+	//Pre-defined activation and cost functions
 	static class SigmoidActivation implements ActivationFunction {
 		@Override
 		public double activation(double z) {
@@ -109,8 +109,6 @@ public class DigitRecognitionNeuralNetwork {
 				activations[j] = activationFunction.activation(
 						dotProduct(lastActivations, weights[i][j], neuronCounts[i - 1])
 						+ biases[i][j]);
-				//System.out.println("Layer " + i + " neuron " + j + ": " + dotProduct(lastActivations, weights[i][j], neuronCounts[i - 1]));
-				//System.out.println(neuronCounts[i]);
 			}
 			lastActivations = activations.clone();
 		}
@@ -131,7 +129,6 @@ public class DigitRecognitionNeuralNetwork {
 			System.out.println("No Training:\nEvaluating...");
 			int correct = 0;
 			for(int i = 0; i < evalData.length; i ++) {
-				//System.out.println(evalData[i].getAvg());
 				if(classify(evalData[i]) == evalData[i].classification) {
 					correct ++;
 				}
