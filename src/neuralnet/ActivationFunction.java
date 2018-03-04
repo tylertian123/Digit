@@ -10,4 +10,6 @@ public interface ActivationFunction {
 	public double activation(double z);
 	//The derivative of the activation function
 	public double activationDerivative(double z);
+	//The activation code
+	public byte getCode();
 }

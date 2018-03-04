@@ -3,8 +3,13 @@ package neuralnet;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,11 +33,19 @@ public class DigitRecognitionNeuralNetwork {
 		public double activationDerivative(double z) {
 			return activation(z) * (1 - activation(z));
 		}
+		@Override
+		public byte getCode() {
+			return 0;
+		}
 	}
 	static class QuadraticCost implements CostFunction {
 		@Override
 		public double costDerivative(double y, double a) {
 			return (a - y);
+		}
+		@Override
+		public byte getCode() {
+			return 0;
 		}
 	}
 	static class CrossEntropySigmoidCost implements CostFunction {
@@ -40,12 +53,24 @@ public class DigitRecognitionNeuralNetwork {
 		public double costDerivative(double y, double a) {
 			return (1 - y) / (1 - a) - y / a;
 		}
+		@Override
+		public byte getCode() {
+			return 1;
+		}
 	}
 
 	public static final ActivationFunction SIGMOID_ACTIVATION = new SigmoidActivation();
 	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
 	public static final CostFunction CROSSENTROPY_SIGMOID_COST = new CrossEntropySigmoidCost();
 	
+	public static final byte SAVE_FORMAT_VER = 0x01;
+	protected static final ActivationFunction[] ACTIVATION_LIST = new ActivationFunction[] {
+			SIGMOID_ACTIVATION
+	};
+	protected static final CostFunction[] COST_LIST	= new CostFunction[] {
+			QUADRATIC_COST,
+			CROSSENTROPY_SIGMOID_COST
+	};
 	/*
 	 * Although the input layer does not have weights and biases, space is still allocated for them
 	 * so the indices are less confusing
@@ -63,8 +88,8 @@ public class DigitRecognitionNeuralNetwork {
 	//the 2nd neuron in the 1st hidden layer and the 3rd neuron in the layer before it
 	protected double[][][] weights;
 	//The activation and cost functions
-	protected final ActivationFunction activationFunction;
-	protected final CostFunction costFunction;
+	protected ActivationFunction activationFunction;
+	protected CostFunction costFunction;
 	
 	static int getMax(int[] arr) {
 		int max = 0;
@@ -144,6 +169,72 @@ public class DigitRecognitionNeuralNetwork {
 			}
 		}
 	}
+	//Loads a neural network from file
+	//For the specific format see saveDataAs
+	public DigitRecognitionNeuralNetwork(File f) throws IOException, NeuralNetworkException {
+		DataInputStream in = new DataInputStream(new FileInputStream(f));
+		byte version = in.readByte();
+		switch(version) {
+		case 0x01:
+		{
+			ArrayList<Integer> countsList = new ArrayList<Integer>();
+			int count;
+			while((count = in.readInt()) != 0) {
+				countsList.add(count);
+			}
+			this.neuronCounts = new int[countsList.size()];
+			for(int i = 0; i < neuronCounts.length; i ++)
+				neuronCounts[i] = countsList.get(i);
+			this.neuronMax = getMax(neuronCounts);
+			this.layers = neuronCounts.length;
+			byte activationType = in.readByte();
+			byte costType = in.readByte();
+			
+			boolean found = false;
+			for(int i = 0; i < ACTIVATION_LIST.length; i ++) {
+				if(ACTIVATION_LIST[i].getCode() == activationType) {
+					this.activationFunction = ACTIVATION_LIST[i];
+					found = true;
+					break;
+				}
+			}
+			if(!found) {
+				in.close();
+				throw new NeuralNetworkException("Unsupported activation function type");
+			}
+			found = false;
+			for(int i = 0; i < COST_LIST.length; i ++) {
+				if(COST_LIST[i].getCode() == costType) {
+					this.costFunction = COST_LIST[i];
+					found = true;
+					break;
+				}
+			}
+			if(!found) {
+				in.close();
+				throw new NeuralNetworkException("Unsupported cost function type");
+			}
+			
+			weights = createWeightsArray();
+			biases = createBiasesArray();
+			for(int i = 1; i < layers; i ++) {
+				for(int j = 0; j < neuronCounts[i]; j ++) {
+					for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+						weights[i][j][k] = in.readDouble();
+					}
+				}
+			}
+			for(int i = 1; i < layers; i ++) {
+				for(int j = 0; j < neuronCounts[i]; j ++) {
+					biases[i][j] = in.readDouble();
+				}
+			}
+		}
+			break;
+		default: in.close(); throw new NeuralNetworkException("Unsupported format");
+		}
+		in.close();
+	}
 	
 	//Feedforwards and outputs the 'classification' of the digit
 	public int classify(MNISTImage img) {
@@ -169,6 +260,14 @@ public class DigitRecognitionNeuralNetwork {
 			}
 		}
 		return maxIndex;
+	}
+	//Returns how many images were correctly classified
+	public int evaluate(MNISTImage[] data) {
+		int total = 0;
+		for(MNISTImage img : data)
+			if(this.classify(img) == img.classification)
+				total ++;
+		return total;
 	}
 	
 	//Stochastic Gradient Descent
@@ -231,16 +330,16 @@ public class DigitRecognitionNeuralNetwork {
 		if(evalData != null)
 			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
 		if(generateGraph) {
-			BufferedImage graph = new BufferedImage(epochs * 10, 500, BufferedImage.TYPE_INT_RGB);
+			BufferedImage graph = new BufferedImage(percentages.length * 10, 500, BufferedImage.TYPE_INT_RGB);
 			Graphics2D g = (Graphics2D) graph.getGraphics();
 			g.setPaint(Color.WHITE);
-			g.fillRect(0, 0, epochs * 10, 500);
+			g.fillRect(0, 0, percentages.length * 10, 500);
 			g.setPaint(Color.RED);
 			for(int i = 0; i < percentages.length - 1; i ++) {
 				g.drawLine(i * 10, (int) (500 - (percentages[i] * 5)), (i + 1) * 10, (int) (500 - (percentages[i + 1] * 5)));
 			}
 			try {
-				ImageIO.write(graph, "png", new File("cost_progression.png"));
+				ImageIO.write(graph, "png", new File("classification_rate_progression.png"));
 			} 
 			catch (IOException e) {
 				e.printStackTrace();
@@ -332,5 +431,51 @@ public class DigitRecognitionNeuralNetwork {
 				}
 			}
 		}
+	}
+	/*
+	 * Format for version 0x01:
+	 * Version code - 1 byte
+	 * Input layer neuron count - 4 bytes
+	 * Hidden layer 1 neuron count - 4 bytes
+	 * Hidden layer 2 neuron count - 4 bytes
+	 * ...
+	 * Output layer neuron count - 4 bytes
+	 * 0 - 4 bytes
+	 * Activation type code - 1 byte
+	 * Cost type code - 1 byte
+	 * Weight[1][0][0] - 8 bytes
+	 * Weight[1][0][1] - 8 bytes
+	 * ...
+	 * Bias[1][0] - 8 bytes
+	 * Bias[1][1] - 8 bytes
+	 * ...
+	 */
+	public void saveDataAs(File f) throws IOException {
+		if(!f.exists())
+			f.createNewFile();
+		DataOutputStream out = new DataOutputStream(new FileOutputStream(f));
+		out.writeByte(SAVE_FORMAT_VER);
+		
+		for(int i = 0; i < layers; i ++)
+			out.writeInt(neuronCounts[i]);
+		out.writeInt(0);
+		
+		out.writeByte(activationFunction.getCode());
+		out.writeByte(costFunction.getCode());
+		
+		for(int i = 1; i < layers; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+					out.writeDouble(weights[i][j][k]);
+				}
+			}
+		}
+		for(int i = 1; i < layers; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				out.writeDouble(biases[i][j]);
+			}
+		}
+		
+		out.close();
 	}
 }
