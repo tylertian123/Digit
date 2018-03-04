@@ -1,9 +1,16 @@
 package neuralnet;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+
+import javax.imageio.ImageIO;
 
 import mnist.MNISTImage;
 
@@ -169,9 +176,14 @@ public class DigitRecognitionNeuralNetwork {
 		SGD(trainingData, batchSize, learningRate, epochs, null);
 	}
 	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData) {
+		SGD(trainingData, batchSize, learningRate, epochs, evalData, false);
+	}
+	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
+		double[] percentages = null;
 		if(evalData != null) {
+			percentages = new double[epochs];
 			System.out.println("No Training:\nEvaluating...");
 			int correct = 0;
 			for(int i = 0; i < evalData.length; i ++) {
@@ -213,10 +225,27 @@ public class DigitRecognitionNeuralNetwork {
 					maxPercentage = percentage;
 					maxEpoch = epoch;
 				}
+				percentages[epoch - 1] = percentage;
 			}
 		}
 		if(evalData != null)
 			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		if(generateGraph) {
+			BufferedImage graph = new BufferedImage(epochs * 10, 500, BufferedImage.TYPE_INT_RGB);
+			Graphics2D g = (Graphics2D) graph.getGraphics();
+			g.setPaint(Color.WHITE);
+			g.fillRect(0, 0, epochs * 10, 500);
+			g.setPaint(Color.RED);
+			for(int i = 0; i < percentages.length - 1; i ++) {
+				g.drawLine(i * 10, (int) (500 - (percentages[i] * 5)), (i + 1) * 10, (int) (500 - (percentages[i + 1] * 5)));
+			}
+			try {
+				ImageIO.write(graph, "png", new File("cost_progression.png"));
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	//Uses gradient descent and backpropagation to learn from a mini-batch
 	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate) {
