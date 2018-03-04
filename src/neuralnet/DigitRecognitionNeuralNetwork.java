@@ -17,23 +17,27 @@ public class DigitRecognitionNeuralNetwork {
 		public double activation(double z) {
 			return 1.0 / (1.0 + Math.exp(-z));
 		}
-
 		@Override
 		public double activationDerivative(double z) {
 			return activation(z) * (1 - activation(z));
 		}
 	}
 	static class QuadraticCost implements CostFunction {
-
 		@Override
 		public double costDerivative(double y, double a) {
 			return (a - y);
 		}
-		
+	}
+	static class CrossEntropySigmoidCost implements CostFunction {
+		@Override
+		public double costDerivative(double y, double a) {
+			return (1 - y) / (1 - a) - y / a;
+		}
 	}
 
 	public static final ActivationFunction SIGMOID_ACTIVATION = new SigmoidActivation();
 	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
+	public static final CostFunction CROSSENTROPY_SIGMOID_COST = new CrossEntropySigmoidCost();
 	
 	/*
 	 * Although the input layer does not have weights and biases, space is still allocated for them
@@ -165,6 +169,8 @@ public class DigitRecognitionNeuralNetwork {
 		SGD(trainingData, batchSize, learningRate, epochs, null);
 	}
 	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData) {
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
 		if(evalData != null) {
 			System.out.println("No Training:\nEvaluating...");
 			int correct = 0;
@@ -203,8 +209,14 @@ public class DigitRecognitionNeuralNetwork {
 				}
 				double percentage = ((double) correct) / evalData.length * 100;
 				System.out.println(percentage + "% correctly classified.");
+				if(percentage > maxPercentage) {
+					maxPercentage = percentage;
+					maxEpoch = epoch;
+				}
 			}
 		}
+		if(evalData != null)
+			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
 	}
 	//Uses gradient descent and backpropagation to learn from a mini-batch
 	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate) {
