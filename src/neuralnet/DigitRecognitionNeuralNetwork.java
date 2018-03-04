@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -284,13 +285,7 @@ public class DigitRecognitionNeuralNetwork {
 		if(evalData != null) {
 			percentages = new double[epochs];
 			System.out.println("No Training:\nEvaluating...");
-			int correct = 0;
-			for(int i = 0; i < evalData.length; i ++) {
-				if(classify(evalData[i]) == evalData[i].classification) {
-					correct ++;
-				}
-			}
-			double percentage = ((double) correct) / evalData.length * 100;
+			double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
 			System.out.println(percentage + "% correctly classified.");
 		}
 		for(int epoch = 1; epoch <= epochs; epoch ++) {
@@ -312,13 +307,7 @@ public class DigitRecognitionNeuralNetwork {
 			
 			if(evalData != null) {
 				System.out.println("Evaluating...");
-				int correct = 0;
-				for(int i = 0; i < evalData.length; i ++) {
-					if(classify(evalData[i]) == evalData[i].classification) {
-						correct ++;
-					}
-				}
-				double percentage = ((double) correct) / evalData.length * 100;
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
 				System.out.println(percentage + "% correctly classified.");
 				if(percentage > maxPercentage) {
 					maxPercentage = percentage;
@@ -346,6 +335,48 @@ public class DigitRecognitionNeuralNetwork {
 			}
 		}
 	}
+	
+	public void SGDAndSave(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData, File outFile) throws IOException {
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
+		
+		File[] netData = new File[epochs];
+		
+		System.out.println("No Training:\nEvaluating...");
+		double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+		System.out.println(percentage + "% correctly classified.");
+		
+		for(int epoch = 1; epoch <= epochs; epoch ++) {
+			List<MNISTImage> l = Arrays.asList(trainingData);
+			Collections.shuffle(l);
+
+			System.out.println("Epoch #" + epoch);
+			System.out.println("Learning...");
+			
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
+				learnFromMiniBatch(miniBatch, learningRate);
+			}
+			
+			System.out.println("Evaluating...");
+			percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+			System.out.println(percentage + "% correctly classified.");
+			if(percentage > maxPercentage) {
+				maxPercentage = percentage;
+				maxEpoch = epoch;
+			}
+			File f = File.createTempFile("tmpnet", null);
+			saveData(f);
+			netData[epoch - 1] = f;
+			f.deleteOnExit();
+		}
+		System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		Files.copy(netData[maxEpoch - 1].toPath(), outFile.toPath());
+	}
+	
 	//Uses gradient descent and backpropagation to learn from a mini-batch
 	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate) {
 		//The size of the batch
@@ -450,7 +481,7 @@ public class DigitRecognitionNeuralNetwork {
 	 * Bias[1][1] - 8 bytes
 	 * ...
 	 */
-	public void saveDataAs(File f) throws IOException {
+	public void saveData(File f) throws IOException {
 		if(!f.exists())
 			f.createNewFile();
 		DataOutputStream out = new DataOutputStream(new FileOutputStream(f));
