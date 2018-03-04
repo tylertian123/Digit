@@ -272,13 +272,13 @@ public class DigitRecognitionNeuralNetwork {
 	}
 	
 	//Stochastic Gradient Descent
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs) {
-		SGD(trainingData, batchSize, learningRate, epochs, null);
+	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant) {
+		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, null);
 	}
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData) {
-		SGD(trainingData, batchSize, learningRate, epochs, evalData, false);
+	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData) {
+		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, evalData, false);
 	}
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData, boolean generateGraph) {
+	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		double[] percentages = null;
@@ -302,7 +302,7 @@ public class DigitRecognitionNeuralNetwork {
 				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
 				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
-				learnFromMiniBatch(miniBatch, learningRate);
+				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
 			}
 			
 			if(evalData != null) {
@@ -336,7 +336,7 @@ public class DigitRecognitionNeuralNetwork {
 		}
 	}
 	
-	public void SGDAndSave(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, MNISTImage[] evalData, File outFile) throws IOException {
+	public void SGDAndSave(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData, File outFile) throws IOException {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		
@@ -358,7 +358,7 @@ public class DigitRecognitionNeuralNetwork {
 				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
 				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
-				learnFromMiniBatch(miniBatch, learningRate);
+				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
 			}
 			
 			System.out.println("Evaluating...");
@@ -374,11 +374,13 @@ public class DigitRecognitionNeuralNetwork {
 			f.deleteOnExit();
 		}
 		System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		if(outFile.exists())
+			outFile.delete();
 		Files.copy(netData[maxEpoch - 1].toPath(), outFile.toPath());
 	}
 	
 	//Uses gradient descent and backpropagation to learn from a mini-batch
-	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate) {
+	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate, double regularizationConstant, int dataSize) {
 		//The size of the batch
 		//Only incremented for values that are non-null
 		int batchSize = 0;
@@ -458,7 +460,8 @@ public class DigitRecognitionNeuralNetwork {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
 				biases[i][j] = biases[i][j] - learningRate * biasDerivativesTotal[i][j];
 				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
-					weights[i][j][k] = weights[i][j][k] - learningRate * weightDerivativesTotal[i][j][k];
+					weights[i][j][k] = weights[i][j][k] * (1 - learningRate * regularizationConstant / dataSize)
+							- learningRate * weightDerivativesTotal[i][j][k];
 				}
 			}
 		}
