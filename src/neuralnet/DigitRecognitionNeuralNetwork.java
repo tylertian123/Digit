@@ -400,6 +400,7 @@ public class DigitRecognitionNeuralNetwork {
 		int bestEpoch = -1;
 		
 		for(int cycle = 1; cycle <= cycles; cycle ++) {
+			System.out.printf("Cycle #%d (eta = %f):\n", cycle, eta);
 			while(true) {
 				List<MNISTImage> l = Arrays.asList(trainingData);
 				Collections.shuffle(l);
@@ -413,7 +414,7 @@ public class DigitRecognitionNeuralNetwork {
 				}
 				
 				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
-				System.out.printf("%f%% correctly classified.", percentage);
+				System.out.printf("%f%% correctly classified.\n", percentage);
 				if(percentage > allTimeBest) {
 					allTimeBest = percentage;
 					bestCycle = cycle;
