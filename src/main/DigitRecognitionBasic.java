@@ -18,11 +18,13 @@ public class DigitRecognitionBasic {
 			MNISTImage[] validationData = MNISTLoader.loadValidationImages();
 			
 			DigitRecognitionNeuralNetwork net = 
-					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 100, 10}, 
+					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 70, 30, 10}, 
 							DigitRecognitionNeuralNetwork.SIGMOID_ACTIVATION,
 							DigitRecognitionNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			net.SGDAndSave(trainingData, 10, 0.5, 40, 5.0, evalData, new File("network.ann"));
-			//net.SGD(trainingData, 10, 0.5, 40, 5.0, evalData, true);
+			//net.SGDAndSave(trainingData, 10, 0.5, 30, 3.0, evalData, new File("network.ann"));
+			net.SGD(trainingData, 10, 0.5, 10, 3.0, evalData, true);
+			net.SGD(trainingData, 10, 0.25, 10, 3.0, evalData);
+			net.SGDAndSave(trainingData, 10, 0.125, 5, 3.0, evalData, new File("network.ann"));
 			
 			/*DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new File("94.93%.ann"));
 			System.out.println(net.evaluate(validationData));*/
