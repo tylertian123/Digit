@@ -378,6 +378,56 @@ public class DigitRecognitionNeuralNetwork {
 			outFile.delete();
 		Files.copy(netData[maxEpoch - 1].toPath(), outFile.toPath());
 	}
+	/*
+	 * SGD Using A Scheduled Learning Rate
+	 * trainingData - Training data
+	 * batchSize - Size of each mini-batch
+	 * initLearningRate - Initial learning rate (eta)
+	 * regularizationConstant - L2 regularization constant (lambda)
+	 * evalData - Performance evaluation data
+	 * schedule - The number of epochs with no performance increase before moving to the next cycle
+	 * newRateFactor - The number to multiply the current learning rate by to get the next learning rate
+	 * cycles - The max number of cycles to continue for
+	 */
+	public void SGDScheduledEta(MNISTImage[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, MNISTImage[] evalData, int schedule, double newRateFactor, int cycles) {
+		int epoch = 1;
+		double eta = initLearningRate;
+		int lastMaxEpoch = 1;
+		double lastMaxRate = 0.0;
+		
+		for(int cycle = 1; cycle <= cycles; cycle ++) {
+			while(true) {
+				List<MNISTImage> l = Arrays.asList(trainingData);
+				Collections.shuffle(l);
+				System.out.printf("Cycle #%d, Epoch #%d:\nLearning...\n", cycle, epoch);
+				
+				for(int i = 0; i < trainingData.length; i += batchSize) {
+					List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+					MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+					miniBatchList.toArray(miniBatch);
+					learnFromMiniBatch(miniBatch, eta, regularizationConstant, trainingData.length);
+				}
+				
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+				System.out.printf("%f%% correctly classified.", percentage);
+				if(percentage > lastMaxRate) {
+					lastMaxRate = percentage;
+					lastMaxEpoch = epoch;
+				}
+				else {
+					if(epoch - lastMaxEpoch > schedule) {
+						lastMaxEpoch = 1;
+						lastMaxRate = 0.0;
+						epoch = 1;
+						break;
+					}
+				}
+				epoch ++;
+			}
+			
+			eta *= newRateFactor;
+		}
+	}
 	
 	//Uses gradient descent and backpropagation to learn from a mini-batch
 	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate, double regularizationConstant, int dataSize) {
