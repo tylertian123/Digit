@@ -15,7 +15,7 @@ public class MNISTLoader {
 	public static final int TESTING_IMG_COUNT = 10000;
 	public static final int VALIDATION_IMG_COUNT = 10000;
 	
-	public static MNISTImage[] loadImagesBasic(int imgCount, File imagesFile, File labelsFile) throws FileNotFoundException, IOException {
+	public static MNISTImage[] loadImagesBasic(int imgCount, File imagesFile, File labelsFile, int offset) throws FileNotFoundException, IOException {
 		MNISTImage[] mnistImages = new MNISTImage[imgCount];
 		BufferedInputStream images = new BufferedInputStream(new FileInputStream(imagesFile));
 		BufferedInputStream labels = new BufferedInputStream(new FileInputStream(labelsFile));
@@ -28,6 +28,10 @@ public class MNISTLoader {
 		//Data buffer
 		byte[] data = new byte[MNISTImage.PIXEL_COUNT];
 		
+		for(int i = 0; i < offset; i ++) {
+			images.read(data);
+			labels.read();
+		}
 		for(int i = 0; i < imgCount; i ++) {
 			//"Pixels are organized row-wise. Pixel values are 0 to 255. 0 means background (white), 255 means foreground (black)."
 			//(From MNIST website)
@@ -43,9 +47,12 @@ public class MNISTLoader {
 	}
 	
 	public static MNISTImage[] loadTrainingImages() throws IOException, FileNotFoundException {
-		return loadImagesBasic(TRAINING_IMG_COUNT, new File("data\\training_images"), new File("data\\training_labels"));
+		return loadImagesBasic(TRAINING_IMG_COUNT, new File("data\\training_images"), new File("data\\training_labels"), 0);
 	}
 	public static MNISTImage[] loadTestingImages() throws IOException, FileNotFoundException {
-		return loadImagesBasic(TESTING_IMG_COUNT, new File("data\\testing_images"), new File("data\\testing_labels"));
+		return loadImagesBasic(TESTING_IMG_COUNT, new File("data\\testing_images"), new File("data\\testing_labels"), 0);
+	}
+	public static MNISTImage[] loadValidationImages() throws IOException, FileNotFoundException {
+		return loadImagesBasic(VALIDATION_IMG_COUNT, new File("data\\training_images"), new File("data\\training_labels"), TRAINING_IMG_COUNT);
 	}
 }

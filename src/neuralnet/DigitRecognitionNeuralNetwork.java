@@ -159,14 +159,14 @@ public class DigitRecognitionNeuralNetwork {
 		//The first (input) layer has no biases, but memory is still allocated to keep indices simple
 		this.biases = createBiasesArray();
 		this.weights = createWeightsArray();
-		//sets each weight and bias to a random real number between
-		//0 and 1
 		//No need to initialize the first layer's weights and biases
 		for(int i = 1; i < layers; i ++) {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
 				biases[i][j] = r.nextGaussian();
 				for(int k = 0; k < neuronCounts[i - 1]; k ++)
-					weights[i][j][k] = r.nextGaussian();
+					//Initialize each weight to a gaussian with mean 0 and standard deviation 1/sqrt(Nin)
+					//Where Nin the number of weights the neuron has
+					weights[i][j][k] = r.nextGaussian() / Math.sqrt(neuronCounts[i - 1]);
 			}
 		}
 	}
@@ -414,7 +414,7 @@ public class DigitRecognitionNeuralNetwork {
 				for(int j = 0; j < neuronCounts[layers - 1]; j ++) {
 					//The error for a neuron in the output layer =
 					//activation'(z) * dC/da
-					e[layers - 1][j] = activationFunction.activationDerivative(z[layers - 1][j]) 
+					e[layers - 1][j] = activationFunction.activationDerivative(z[layers - 1][j])
 							* costFunction.costDerivative(y[j], a[layers - 1][j]);
 				}
 				//Backpropagate

@@ -15,14 +15,17 @@ public class DigitRecognitionBasic {
 		try {
 			MNISTImage[] trainingData = MNISTLoader.loadTrainingImages();
 			MNISTImage[] evalData = MNISTLoader.loadTestingImages();
+			MNISTImage[] validationData = MNISTLoader.loadValidationImages();
+			
 			DigitRecognitionNeuralNetwork net = 
 					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 100, 10}, 
 							DigitRecognitionNeuralNetwork.SIGMOID_ACTIVATION,
 							DigitRecognitionNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			net.SGDAndSave(trainingData, 10, 0.5, 30, 5.0, evalData, new File("network.ann"));
+			net.SGDAndSave(trainingData, 10, 0.5, 40, 5.0, evalData, new File("network.ann"));
+			//net.SGD(trainingData, 10, 0.5, 40, 5.0, evalData, true);
 			
-			/*DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new File("ann1.ann"));
-			System.out.println(net.evaluate(evalData));*/
+			/*DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new File("94.93%.ann"));
+			System.out.println(net.evaluate(validationData));*/
 		} 
 		catch (Exception e) {
 			e.printStackTrace();
