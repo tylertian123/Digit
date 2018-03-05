@@ -7,7 +7,6 @@ import java.io.IOException;
 
 import mnist.MNISTImage;
 import neuralnet.DigitRecognitionNeuralNetwork;
-import neuralnet.NeuralNetworkException;
 
 public class DigitRecognitionBasic {
 
@@ -24,6 +23,7 @@ public class DigitRecognitionBasic {
 			//net.SGDAndSave(trainingData, 10, 0.5, 30, 3.0, evalData, new File("network.ann"));
 			//net.SGDAndSave(trainingData, 10, 0.125, 5, 3.0, evalData, new File("network.ann"));
 			net.SGDScheduledEta(trainingData, 10, 0.5, 5.0, evalData, 3, 0.5, 4);
+			net.saveData(new File("sgdscheduled.ann"));
 			
 			/*DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new File("94.93%.ann"));
 			System.out.println(net.evaluate(validationData));*/
