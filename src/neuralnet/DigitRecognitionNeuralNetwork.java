@@ -395,6 +395,10 @@ public class DigitRecognitionNeuralNetwork {
 		int lastMaxEpoch = 1;
 		double lastMaxRate = 0.0;
 		
+		double allTimeBest = 0.0;
+		int bestCycle = -1;
+		int bestEpoch = -1;
+		
 		for(int cycle = 1; cycle <= cycles; cycle ++) {
 			while(true) {
 				List<MNISTImage> l = Arrays.asList(trainingData);
@@ -410,6 +414,11 @@ public class DigitRecognitionNeuralNetwork {
 				
 				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
 				System.out.printf("%f%% correctly classified.", percentage);
+				if(percentage > allTimeBest) {
+					allTimeBest = percentage;
+					bestCycle = cycle;
+					bestEpoch = epoch;
+				}
 				if(percentage > lastMaxRate) {
 					lastMaxRate = percentage;
 					lastMaxEpoch = epoch;
@@ -427,6 +436,7 @@ public class DigitRecognitionNeuralNetwork {
 			
 			eta *= newRateFactor;
 		}
+		System.out.printf("Training finished.\nAll-time best was %f%% at Cycle #%d, Epoch #%d.\n", allTimeBest, bestCycle, bestEpoch);
 	}
 	
 	//Uses gradient descent and backpropagation to learn from a mini-batch
