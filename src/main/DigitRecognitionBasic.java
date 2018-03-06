@@ -6,7 +6,7 @@ import java.io.File;
 import java.io.IOException;
 
 import mnist.MNISTImage;
-import neuralnet.DigitRecognitionNeuralNetwork;
+import neuralnet.NeuralNetwork;
 
 public class DigitRecognitionBasic {
 
@@ -16,17 +16,16 @@ public class DigitRecognitionBasic {
 			MNISTImage[] evalData = MNISTLoader.loadTestingImages();
 			MNISTImage[] validationData = MNISTLoader.loadValidationImages();
 			
-			DigitRecognitionNeuralNetwork net = 
-					new DigitRecognitionNeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 70, 30, 10}, 
-							DigitRecognitionNeuralNetwork.SIGMOID_ACTIVATION,
-							DigitRecognitionNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			//net.SGDAndSave(trainingData, 10, 0.5, 30, 3.0, evalData, new File("network.ann"));
-			//net.SGDAndSave(trainingData, 10, 0.125, 5, 3.0, evalData, new File("network.ann"));
-			net.SGDScheduledEta(trainingData, 10, 0.5, 5.0, evalData, 3, 0.5, 4);
-			net.saveData(new File("sgdscheduled.ann"));
+			NeuralNetwork net = 
+					new NeuralNetwork(new int[] {MNISTImage.PIXEL_COUNT, 100, 10}, 
+							NeuralNetwork.SIGMOID_ACTIVATION,
+							NeuralNetwork.CROSSENTROPY_SIGMOID_COST);
+			//net.SGDScheduledEta(trainingData, 10, 0.5, 5.0, evalData, 3, 0.5, 8);
+			//net.saveData(new File("sgdscheduled.ann"));
+			net.SGD(trainingData, 2, 0.10, 20, 5.0, evalData, true);
 			
-			/*DigitRecognitionNeuralNetwork net = new DigitRecognitionNeuralNetwork(new File("94.93%.ann"));
-			System.out.println(net.evaluate(validationData));*/
+			//NeuralNetwork net = new NeuralNetwork(new File("sgdscheduled.ann"));
+			//System.out.println(net.evaluate(validationData));
 		} 
 		catch (Exception e) {
 			e.printStackTrace();

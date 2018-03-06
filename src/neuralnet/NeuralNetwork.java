@@ -23,7 +23,12 @@ import mnist.MNISTImage;
 /*
  * A neural network that classifies MNIST database digits
  */
-public class DigitRecognitionNeuralNetwork {
+public class NeuralNetwork implements Cloneable {
+	@Override
+	public Object clone() {
+		return new NeuralNetwork(this);
+	}
+	
 	//Pre-defined activation and cost functions
 	static class SigmoidActivation implements ActivationFunction {
 		@Override
@@ -76,11 +81,11 @@ public class DigitRecognitionNeuralNetwork {
 	 * Although the input layer does not have weights and biases, space is still allocated for them
 	 * so the indices are less confusing
 	 */
-	protected final int layers;
+	protected int layers;
 	//the number of neurons in each layer
 	protected int[] neuronCounts;
 	//most number of neurons in a layer
-	protected final int neuronMax;
+	protected int neuronMax;
 	//bias of each neuron, from layer and number
 	//e.g. biases[1][1] is the bias of the 2nd neuron in the 1st hidden layer
 	protected double[][] biases;
@@ -149,7 +154,7 @@ public class DigitRecognitionNeuralNetwork {
 	//Creates the network and initializes each weight and bias with a normal distribution random number
 	//with mean of 0 and standard deviation 1
 	//The activation and cost are also custom specified
-	public DigitRecognitionNeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
+	public NeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
 		Random r = new Random();
 		activationFunction = activation;
 		costFunction = cost;
@@ -172,7 +177,7 @@ public class DigitRecognitionNeuralNetwork {
 	}
 	//Loads a neural network from file
 	//For the specific format see saveDataAs
-	public DigitRecognitionNeuralNetwork(File f) throws IOException, NeuralNetworkException {
+	public NeuralNetwork(File f) throws IOException, NeuralNetworkException {
 		DataInputStream in = new DataInputStream(new FileInputStream(f));
 		byte version = in.readByte();
 		switch(version) {
@@ -235,6 +240,38 @@ public class DigitRecognitionNeuralNetwork {
 		default: in.close(); throw new NeuralNetworkException("Unsupported format");
 		}
 		in.close();
+	}
+	//Copy constructor is just a wrapper that calls copyFrom
+	public NeuralNetwork(final NeuralNetwork otherNet) {
+		copyFrom(otherNet);
+	}
+	public NeuralNetwork() {
+	}
+	
+	//Loads a neural network into the current one
+	//Same as using the file constructor
+	public void loadFile(File f) throws IOException, NeuralNetworkException {
+		this.copyFrom(new NeuralNetwork(f));
+	}
+	
+	/*
+	 * Changes the current network to be an exact copy of otherNet
+	 */
+	public void copyFrom(final NeuralNetwork otherNet) {
+		this.layers = otherNet.layers;
+		this.neuronCounts = otherNet.neuronCounts;
+		this.neuronMax = otherNet.neuronMax;
+		this.activationFunction = otherNet.activationFunction;
+		this.costFunction = otherNet.costFunction;
+		
+		for(int i = 1; i < layers; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				this.biases[i][j] = otherNet.biases[i][j];
+				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+					this.weights[i][j][k] = otherNet.weights[i][j][k];
+				}
+			}
+		}
 	}
 	
 	//Feedforwards and outputs the 'classification' of the digit
@@ -335,7 +372,8 @@ public class DigitRecognitionNeuralNetwork {
 			}
 		}
 	}
-	
+	//Performs SGD and self-evaluates each epoch. After the number of epochs is reached, the 
+	//all-time best performing network will be restored and saved, even if it is not the final network.
 	public void SGDAndSave(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData, File outFile) throws IOException {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -425,7 +463,7 @@ public class DigitRecognitionNeuralNetwork {
 					lastMaxEpoch = epoch;
 				}
 				else {
-					if(epoch - lastMaxEpoch > schedule) {
+					if(epoch - lastMaxEpoch >= schedule) {
 						lastMaxEpoch = 1;
 						lastMaxRate = 0.0;
 						epoch = 1;
@@ -509,10 +547,10 @@ public class DigitRecognitionNeuralNetwork {
 		for(int i = 1; i < layers; i ++) {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
 				//System.out.println(biasDerivativesTotal[i][j]);
-				biasDerivativesTotal[i][j] /= batchSize;
+				biasDerivativesTotal[i][j] /= (double)batchSize;
 				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
 					//System.out.println(weightDerivativesTotal[i][j][k]);
-					weightDerivativesTotal[i][j][k] /= batchSize;
+					weightDerivativesTotal[i][j][k] /= (double)batchSize;
 				}
 			}
 		}
