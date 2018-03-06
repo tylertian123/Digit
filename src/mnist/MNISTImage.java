@@ -1,14 +1,16 @@
 package mnist;
 
+import neuralnet.Classifiable;
+
 /*
  * A training/evaluation image
  */
-public class MNISTImage {
+public class MNISTImage implements Classifiable {
 	public static final int SIZE = 28;
 	public static final int PIXEL_COUNT = SIZE * SIZE;
 	//Data is stored in a byte array
 	public byte[] data;
-	public byte classification;
+	byte classification;
 	
 	public MNISTImage(byte[] dat, byte classification) {
 		if(dat.length != PIXEL_COUNT)
@@ -50,5 +52,9 @@ public class MNISTImage {
 				System.out.print(0);
 			
 		}
+	}
+	@Override
+	public int getClassification() {
+		return this.classification;
 	}
 }

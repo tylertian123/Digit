@@ -18,15 +18,13 @@ import java.util.Random;
 
 import javax.imageio.ImageIO;
 
-import mnist.MNISTImage;
-
 /*
  * A neural network that classifies MNIST database digits
  */
-public class NeuralNetwork implements Cloneable {
+public class ClassificationNeuralNetwork<T extends Classifiable> implements Cloneable {
 	@Override
 	public Object clone() {
-		return new NeuralNetwork(this);
+		return new ClassificationNeuralNetwork<T>(this);
 	}
 	
 	//Pre-defined activation and cost functions
@@ -154,7 +152,7 @@ public class NeuralNetwork implements Cloneable {
 	//Creates the network and initializes each weight and bias with a normal distribution random number
 	//with mean of 0 and standard deviation 1
 	//The activation and cost are also custom specified
-	public NeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
+	public ClassificationNeuralNetwork(int[] neuronCounts, ActivationFunction activation, CostFunction cost) {
 		Random r = new Random();
 		activationFunction = activation;
 		costFunction = cost;
@@ -177,7 +175,7 @@ public class NeuralNetwork implements Cloneable {
 	}
 	//Loads a neural network from file
 	//For the specific format see saveDataAs
-	public NeuralNetwork(File f) throws IOException, NeuralNetworkException {
+	public ClassificationNeuralNetwork(File f) throws IOException, NeuralNetworkException {
 		DataInputStream in = new DataInputStream(new FileInputStream(f));
 		byte version = in.readByte();
 		switch(version) {
@@ -242,22 +240,22 @@ public class NeuralNetwork implements Cloneable {
 		in.close();
 	}
 	//Copy constructor is just a wrapper that calls copyFrom
-	public NeuralNetwork(final NeuralNetwork otherNet) {
+	public ClassificationNeuralNetwork(final ClassificationNeuralNetwork<?> otherNet) {
 		copyFrom(otherNet);
 	}
-	public NeuralNetwork() {
+	public ClassificationNeuralNetwork() {
 	}
 	
 	//Loads a neural network into the current one
 	//Same as using the file constructor
 	public void loadFile(File f) throws IOException, NeuralNetworkException {
-		this.copyFrom(new NeuralNetwork(f));
+		this.copyFrom(new ClassificationNeuralNetwork<T>(f));
 	}
 	
 	/*
 	 * Changes the current network to be an exact copy of otherNet
 	 */
-	public void copyFrom(final NeuralNetwork otherNet) {
+	public void copyFrom(final ClassificationNeuralNetwork<?> otherNet) {
 		this.layers = otherNet.layers;
 		this.neuronCounts = otherNet.neuronCounts;
 		this.neuronMax = otherNet.neuronMax;
@@ -274,10 +272,10 @@ public class NeuralNetwork implements Cloneable {
 		}
 	}
 	
-	//Feedforwards and outputs the 'classification' of the digit
-	public int classify(MNISTImage img) {
+	//Feedforwards and outputs the 'classification' the neural network generates
+	public int classify(T obj) {
 		double[] lastActivations = new double[neuronMax];
-		double[] input = img.asNeuralNetworkInput();
+		double[] input = obj.asNeuralNetworkInput();
 		for(int i = 0; i < input.length; i ++) {
 			lastActivations[i] = input[i];
 		}
@@ -300,22 +298,23 @@ public class NeuralNetwork implements Cloneable {
 		return maxIndex;
 	}
 	//Returns how many images were correctly classified
-	public int evaluate(MNISTImage[] data) {
+	public int evaluate(T[] data) {
 		int total = 0;
-		for(MNISTImage img : data)
-			if(this.classify(img) == img.classification)
+		for(T obj : data)
+			if(this.classify(obj) == obj.getClassification())
 				total ++;
 		return total;
 	}
 	
 	//Stochastic Gradient Descent
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant) {
+	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant) {
 		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, null);
 	}
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData) {
+	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData) {
 		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, evalData, false);
 	}
-	public void SGD(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData, boolean generateGraph) {
+	@SuppressWarnings("unchecked")
+	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		double[] percentages = null;
@@ -326,7 +325,7 @@ public class NeuralNetwork implements Cloneable {
 			System.out.println(percentage + "% correctly classified.");
 		}
 		for(int epoch = 1; epoch <= epochs; epoch ++) {
-			List<MNISTImage> l = Arrays.asList(trainingData);
+			List<T> l = Arrays.asList(trainingData);
 			Collections.shuffle(l);
 			
 			if(evalData != null) {
@@ -336,8 +335,8 @@ public class NeuralNetwork implements Cloneable {
 			
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
-				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
-				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
 			}
@@ -374,7 +373,8 @@ public class NeuralNetwork implements Cloneable {
 	}
 	//Performs SGD and self-evaluates each epoch. After the number of epochs is reached, the 
 	//all-time best performing network will be restored and saved, even if it is not the final network.
-	public void SGDAndSave(MNISTImage[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, MNISTImage[] evalData, File outFile) throws IOException {
+	@SuppressWarnings("unchecked")
+	public void SGDAndSave(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData, File outFile) throws IOException {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		
@@ -385,7 +385,7 @@ public class NeuralNetwork implements Cloneable {
 		System.out.println(percentage + "% correctly classified.");
 		
 		for(int epoch = 1; epoch <= epochs; epoch ++) {
-			List<MNISTImage> l = Arrays.asList(trainingData);
+			List<T> l = Arrays.asList(trainingData);
 			Collections.shuffle(l);
 
 			System.out.println("Epoch #" + epoch);
@@ -393,8 +393,8 @@ public class NeuralNetwork implements Cloneable {
 			
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
-				List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
-				MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
 			}
@@ -427,7 +427,8 @@ public class NeuralNetwork implements Cloneable {
 	 * newRateFactor - The number to multiply the current learning rate by to get the next learning rate
 	 * cycles - The max number of cycles to continue for
 	 */
-	public void SGDScheduledEta(MNISTImage[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, MNISTImage[] evalData, int schedule, double newRateFactor, int cycles) {
+	@SuppressWarnings("unchecked")
+	public void SGDScheduledEta(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, T[] evalData, int schedule, double newRateFactor, int cycles) {
 		int epoch = 1;
 		double eta = initLearningRate;
 		int lastMaxEpoch = 1;
@@ -440,13 +441,13 @@ public class NeuralNetwork implements Cloneable {
 		for(int cycle = 1; cycle <= cycles; cycle ++) {
 			System.out.printf("Cycle #%d (eta = %f):\n", cycle, eta);
 			while(true) {
-				List<MNISTImage> l = Arrays.asList(trainingData);
+				List<T> l = Arrays.asList(trainingData);
 				Collections.shuffle(l);
 				System.out.printf("Cycle #%d, Epoch #%d:\nLearning...\n", cycle, epoch);
 				
 				for(int i = 0; i < trainingData.length; i += batchSize) {
-					List<MNISTImage> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
-					MNISTImage[] miniBatch = new MNISTImage[miniBatchList.size()];
+					List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+					T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 					miniBatchList.toArray(miniBatch);
 					learnFromMiniBatch(miniBatch, eta, regularizationConstant, trainingData.length);
 				}
@@ -479,7 +480,7 @@ public class NeuralNetwork implements Cloneable {
 	}
 	
 	//Uses gradient descent and backpropagation to learn from a mini-batch
-	public void learnFromMiniBatch(MNISTImage[] miniBatch, double learningRate, double regularizationConstant, int dataSize) {
+	public void learnFromMiniBatch(T[] miniBatch, double learningRate, double regularizationConstant, int dataSize) {
 		//The size of the batch
 		//Only incremented for values that are non-null
 		int batchSize = 0;
@@ -487,7 +488,7 @@ public class NeuralNetwork implements Cloneable {
 		double[][] biasDerivativesTotal = createBiasesArray();
 		double[][][] weightDerivativesTotal = createWeightsArray();
 		
-		for(MNISTImage trainingSample : miniBatch) {
+		for(T trainingSample : miniBatch) {
 			if(trainingSample != null) {
 				batchSize ++;
 				//Expected output
