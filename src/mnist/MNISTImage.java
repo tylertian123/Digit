@@ -10,16 +10,17 @@ public class MNISTImage implements Classifiable {
 	public static final int PIXEL_COUNT = SIZE * SIZE;
 	//Data is stored in a byte array
 	public byte[] data;
-	byte classification;
+	int classification;
 	
-	public MNISTImage(byte[] dat, byte classification) {
+	public MNISTImage(byte[] dat, int classification) {
 		if(dat.length != PIXEL_COUNT)
 			throw new IllegalArgumentException("Data array provided is of wrong size");
 		data = dat;
 		this.classification = classification;
 	}
-	public MNISTImage() {
+	public MNISTImage(int classification) {
 		data = new byte[PIXEL_COUNT];
+		this.classification = classification;
 	}
 	
 	//Returns a double[] that has the same length as the number of pixels in an image.
@@ -53,6 +54,14 @@ public class MNISTImage implements Classifiable {
 			
 		}
 	}
+	
+	public byte get(int x, int y) {
+		return data[y * SIZE + x];
+	}
+	public void set(int x, int y, byte val) {
+		data[y * SIZE + x] = val;
+	}
+	
 	@Override
 	public int getClassification() {
 		return this.classification;

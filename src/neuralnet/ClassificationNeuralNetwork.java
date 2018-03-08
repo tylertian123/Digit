@@ -19,7 +19,7 @@ import java.util.Random;
 import javax.imageio.ImageIO;
 
 /*
- * A neural network that classifies MNIST database digits
+ * A neural network that classifies Classifiables
  */
 public class ClassificationNeuralNetwork<T extends Classifiable> implements Cloneable {
 	@Override
