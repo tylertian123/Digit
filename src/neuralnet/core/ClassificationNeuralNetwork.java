@@ -367,7 +367,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	
 	/**
 	 * Stochastic gradient descent using L2 regularization.<br>
-	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, null, false)
+	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, null)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
@@ -380,7 +380,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	/**
 	 * Stochastic gradient descent using L2 regularization. The performance is evaluated and printed to stdout 
 	 * for each epoch, unless evalData is null.<br>
-	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, evalData, false)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
@@ -388,8 +387,44 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with
 	 */
+	@SuppressWarnings("unchecked")
 	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData) {
-		SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, evalData, false);
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
+		if(evalData != null) {
+			System.out.println("No Training:\nEvaluating...");
+			double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+			System.out.println(percentage + "% correctly classified.");
+		}
+		for(int epoch = 1; epoch <= epochs; epoch ++) {
+			List<T> l = Arrays.asList(trainingData);
+			Collections.shuffle(l);
+			
+			if(evalData != null) {
+				System.out.println("Epoch #" + epoch);
+				System.out.println("Learning...");
+			}
+			
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
+				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
+			}
+			
+			if(evalData != null) {
+				System.out.println("Evaluating...");
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+				System.out.println(percentage + "% correctly classified.");
+				if(percentage > maxPercentage) {
+					maxPercentage = percentage;
+					maxEpoch = epoch;
+				}
+			}
+		}
+		if(evalData != null)
+			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
 	}
 	/**
 	 * Stochastic gradient descent using L2 regularization. The performance is evaluated and printed to stdout 
@@ -528,7 +563,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	}
 	/**
 	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
-	 * Equivalent to calling MomentumSGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null)
+	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
@@ -536,8 +571,8 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param momentumCoefficient - The momentum coefficient (mu)
 	 * @param epochs - The number of epochs to train for
 	 */
-	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs) {
-		MomentumSGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null);
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs) {
+		SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null);
 	}
 	/**
 	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
@@ -551,7 +586,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param evalData - The data to evaluate the network's performance with
 	 */
 	@SuppressWarnings("unchecked")
-	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData) {
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData) {
 		double[][][] velocity = createWeightsArray();
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -607,7 +642,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param cycles - The number of cycles to continue for
 	 */
 	@SuppressWarnings("unchecked")
-	public void SGDScheduledEta(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, T[] evalData, int schedule, double newRateFactor, int cycles) {
+	public void scheduledSGD(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, T[] evalData, int schedule, double newRateFactor, int cycles) {
 		int epoch = 1;
 		double eta = initLearningRate;
 		int lastMaxEpoch = 1;
@@ -672,7 +707,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param cycles - The number of cycles to continue for
 	 */
 	@SuppressWarnings("unchecked")
-	public void SGDScheduledEta(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, double momentumCoefficient, T[] evalData, int schedule, double newRateFactor, int cycles) {
+	public void scheduledSGD(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, double momentumCoefficient, T[] evalData, int schedule, double newRateFactor, int cycles) {
 		double[][][] velocity = createWeightsArray();
 		
 		int epoch = 1;
