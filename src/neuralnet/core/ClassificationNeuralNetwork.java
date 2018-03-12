@@ -387,7 +387,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with
 	 */
-	@SuppressWarnings("unchecked")
 	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -408,6 +407,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
 				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
 				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
@@ -429,6 +429,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	/**
 	 * Stochastic gradient descent using L2 regularization. The performance is evaluated and printed to stdout 
 	 * for each epoch, unless evalData is null. A performance graph is also generated in the end if generateGraph is true.
+	 * @deprecated The use of the graphing feature is discouraged.
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
@@ -437,7 +438,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param evalData - The data to evaluate the network's performance with
 	 * @param generateGraph - If true, generates a classification rate vs time graph.
 	 */
-	@SuppressWarnings("unchecked")
 	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -460,6 +460,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
 				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
 				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
@@ -496,6 +497,73 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		}
 	}
 	/**
+	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
+	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null)
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param learningRate - The learning rate (eta)
+	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
+	 */
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs) {
+		SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null);
+	}
+	/**
+	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
+	 * The performance after each epoch is evaluated and printed to stdout if evalData is not null.
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param learningRate - The learning rate (eta)
+	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
+	 * @param evalData - The data to evaluate the network's performance with
+	 */
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData) {
+		double[][][] velocity = createWeightsArray();
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
+		double[] percentages = null;
+		if(evalData != null) {
+			percentages = new double[epochs];
+			System.out.println("No Training:\nEvaluating...");
+			double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+			System.out.println(percentage + "% correctly classified.");
+		}
+		for(int epoch = 1; epoch <= epochs; epoch ++) {
+			List<T> l = Arrays.asList(trainingData);
+			Collections.shuffle(l);
+			
+			if(evalData != null) {
+				System.out.println("Epoch #" + epoch);
+				System.out.println("Learning...");
+			}
+			
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
+				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length, velocity, momentumCoefficient);
+			}
+			
+			if(evalData != null) {
+				System.out.println("Evaluating...");
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+				System.out.println(percentage + "% correctly classified.");
+				if(percentage > maxPercentage) {
+					maxPercentage = percentage;
+					maxEpoch = epoch;
+				}
+				percentages[epoch - 1] = percentage;
+			}
+		}
+		if(evalData != null)
+			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+	}
+	/**
 	 * Performs stochastic gradient descent with L2 regularization and saves the best network.<br>
 	 * After each training epoch, the data of the network is stored as a temporary file that is deleted when the VM exits.
 	 * When the training is finished, the network will load and make permanent the temporary file that stores the network with the best
@@ -509,7 +577,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param outFile - The file to save the final network as. Can be null.
 	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
-	@SuppressWarnings("unchecked")
 	public void SGDAndSave(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData, File outFile) throws IOException {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -530,6 +597,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
 				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
 				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length);
@@ -562,71 +630,73 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		}
 	}
 	/**
-	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
-	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null)
+	 * Performs stochastic gradient descent with L2 regularization and momentum and saves the best network.<br>
+	 * After each training epoch, the data of the network is stored as a temporary file that is deleted when the VM exits.
+	 * When the training is finished, the network will load and make permanent the temporary file that stores the network with the best
+	 * performance compared to all other epochs, even if it might not be the network from the last epoch.
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
 	 * @param regularizationConstant - The regularization constant (lambda)
 	 * @param momentumCoefficient - The momentum coefficient (mu)
 	 * @param epochs - The number of epochs to train for
+	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
+	 * @param outFile - The file to save the final network as. Can be null.
+	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
-	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs) {
-		SGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null);
-	}
-	/**
-	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
-	 * The performance after each epoch is evaluated and printed to stdout if evalData is not null.
-	 * @param trainingData - The training data
-	 * @param batchSize - The size of each mini-batch
-	 * @param learningRate - The learning rate (eta)
-	 * @param regularizationConstant - The regularization constant (lambda)
-	 * @param momentumCoefficient - The momentum coefficient (mu)
-	 * @param epochs - The number of epochs to train for
-	 * @param evalData - The data to evaluate the network's performance with
-	 */
-	@SuppressWarnings("unchecked")
-	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData) {
+	public void SGDAndSave(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData, File outFile) throws IOException {
 		double[][][] velocity = createWeightsArray();
+		
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
-		double[] percentages = null;
-		if(evalData != null) {
-			percentages = new double[epochs];
-			System.out.println("No Training:\nEvaluating...");
-			double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
-			System.out.println(percentage + "% correctly classified.");
-		}
+		
+		File[] netData = new File[epochs];
+		
+		System.out.println("No Training:\nEvaluating...");
+		double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+		System.out.println(percentage + "% correctly classified.");
+		
 		for(int epoch = 1; epoch <= epochs; epoch ++) {
 			List<T> l = Arrays.asList(trainingData);
 			Collections.shuffle(l);
-			
-			if(evalData != null) {
-				System.out.println("Epoch #" + epoch);
-				System.out.println("Learning...");
-			}
+
+			System.out.println("Epoch #" + epoch);
+			System.out.println("Learning...");
 			
 			//Separate the shuffled training samples into mini-batches and train with each mini-batch
 			for(int i = 0; i < trainingData.length; i += batchSize) {
 				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
 				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
 				learnFromMiniBatch(miniBatch, learningRate, regularizationConstant, trainingData.length, velocity, momentumCoefficient);
 			}
 			
-			if(evalData != null) {
-				System.out.println("Evaluating...");
-				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
-				System.out.println(percentage + "% correctly classified.");
-				if(percentage > maxPercentage) {
-					maxPercentage = percentage;
-					maxEpoch = epoch;
-				}
-				percentages[epoch - 1] = percentage;
+			System.out.println("Evaluating...");
+			percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+			System.out.println(percentage + "% correctly classified.");
+			if(percentage > maxPercentage) {
+				maxPercentage = percentage;
+				maxEpoch = epoch;
 			}
+			File f = File.createTempFile("tmpnet", null);
+			saveData(f);
+			netData[epoch - 1] = f;
+			f.deleteOnExit();
 		}
-		if(evalData != null)
-			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		if(outFile != null) {
+			if(outFile.exists())
+				outFile.delete();
+			Files.copy(netData[maxEpoch - 1].toPath(), outFile.toPath());
+		}
+		
+		try {
+			this.loadFile(netData[maxEpoch - 1]);
+		} 
+		catch (NeuralNetworkException e) {
+			System.err.println("Unexpected exception in SGDAndSave(): " + e.toString());
+		}
 	}
 	/**
 	 * Performs stochastic gradient descent with L2 regularization with a changing/scheduled learning rate.
@@ -641,7 +711,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param newRateFactor - The scalar the learning rate is multiplied by for each cycle
 	 * @param cycles - The number of cycles to continue for
 	 */
-	@SuppressWarnings("unchecked")
 	public void scheduledSGD(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, T[] evalData, int schedule, double newRateFactor, int cycles) {
 		int epoch = 1;
 		double eta = initLearningRate;
@@ -661,6 +730,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 				
 				for(int i = 0; i < trainingData.length; i += batchSize) {
 					List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+					@SuppressWarnings("unchecked")
 					T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 					miniBatchList.toArray(miniBatch);
 					learnFromMiniBatch(miniBatch, eta, regularizationConstant, trainingData.length);
@@ -706,7 +776,6 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param newRateFactor - The scalar the learning rate is multiplied by for each cycle
 	 * @param cycles - The number of cycles to continue for
 	 */
-	@SuppressWarnings("unchecked")
 	public void scheduledSGD(T[] trainingData, int batchSize, double initLearningRate, double regularizationConstant, double momentumCoefficient, T[] evalData, int schedule, double newRateFactor, int cycles) {
 		double[][][] velocity = createWeightsArray();
 		
@@ -728,6 +797,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 				
 				for(int i = 0; i < trainingData.length; i += batchSize) {
 					List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+					@SuppressWarnings("unchecked")
 					T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 					miniBatchList.toArray(miniBatch);
 					learnFromMiniBatch(miniBatch, eta, regularizationConstant, trainingData.length, velocity, momentumCoefficient);
