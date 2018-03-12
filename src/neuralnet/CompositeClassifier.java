@@ -10,20 +10,20 @@ public class CompositeClassifier<T extends Classifiable> {
 		networks = n;
 	}
 	
-	public int classify(T obj) {
-		int[] classifications = new int[networks.length];
+	public Object classify(T obj) {
+		Object[] classifications = new Object[networks.length];
 		for(int i = 0; i < networks.length; i ++)
 			classifications[i] = networks[i].classify(obj);
-		HashMap<Integer, Integer> occurrences = new HashMap<Integer, Integer>();
-		for(int c : classifications) {
+		HashMap<Object, Integer> occurrences = new HashMap<Object, Integer>();
+		for(Object c : classifications) {
 			if(occurrences.containsKey(c))
 				occurrences.put(c, occurrences.get(c) + 1);
 			else
 				occurrences.put(c, 1);
 		}
-		int maxClassification = 0;
+		Object maxClassification = 0;
 		int maxVal = 0;
-		for(int o : occurrences.keySet()) {
+		for(Object o : occurrences.keySet()) {
 			if(occurrences.get(o) > maxVal) {
 				maxVal = occurrences.get(o);
 				maxClassification = o;

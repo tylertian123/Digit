@@ -23,14 +23,17 @@ public class DigitRecognitionBasic {
 			System.arraycopy(expanded1, 0, expandedImages, trainingImages.length, expanded1.length);
 			System.arraycopy(expanded2, 0, expandedImages, trainingImages.length + expanded1.length, expanded2.length);
 			
-			ClassificationNeuralNetwork<MNISTImage> net = new ClassificationNeuralNetwork<MNISTImage>(
+			/*ClassificationNeuralNetwork<MNISTImage> net = new ClassificationNeuralNetwork<MNISTImage>(
 					new int[] { MNISTImage.PIXEL_COUNT, 150, 10 },
 					ClassificationNeuralNetwork.SIGMOID_ACTIVATION,
-					ClassificationNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			//net.SGDScheduledEta(expandedImages, 1, 1.0, 5.0, testingImages, 2, 0.5, 5);
-			//net.SGD(trainingImages, 5, 0.75, 10, 5.0, testingImages);
-			net.SGDScheduledEta(trainingImages, 10, 0.10, 5.0, testingImages, 2, 0.6666666, 3);
+					ClassificationNeuralNetwork.CROSSENTROPY_SIGMOID_COST);*/
+			//net.SGDScheduledEta(trainingImages, 10, 0.10, 5.0, testingImages, 2, 0.6666666, 3);
 			//net.saveData(new File("expanded_set_150_neurons.ann"));
+			ClassificationNeuralNetwork<MNISTImage> net = new ClassificationNeuralNetwork<MNISTImage>(
+					new int[] { MNISTImage.PIXEL_COUNT, 50, 10 },
+					ClassificationNeuralNetwork.SIGMOID_ACTIVATION,
+					ClassificationNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
+			net.SGD(trainingImages, 5, 0.5, 20, 5.0, testingImages);
 		} 
 		catch (Exception e) {
 			e.printStackTrace();

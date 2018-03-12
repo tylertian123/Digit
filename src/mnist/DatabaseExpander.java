@@ -6,7 +6,7 @@ public final class DatabaseExpander {
 		return a > lower ? a : lower;
 	}
 	static MNISTImage translateImage(MNISTImage src, int xa, int ya) {
-		MNISTImage img = new MNISTImage(src.getClassification());
+		MNISTImage img = new MNISTImage((int) src.getClassification());
 		for(int x = 0; x < MNISTImage.SIZE; x ++) {
 			for(int y = 0; y < MNISTImage.SIZE; y ++) {
 				img.set(constrain(x + xa, MNISTImage.SIZE - 1, 0), constrain(y + ya, MNISTImage.SIZE - 1, 0), src.get(x, y));

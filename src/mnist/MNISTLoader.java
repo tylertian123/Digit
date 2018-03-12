@@ -98,7 +98,7 @@ public final class MNISTLoader {
 		
 		for(MNISTImage img : images) {
 			imgData.write(img.data);
-			labelData.write(img.getClassification());
+			labelData.write((int) img.getClassification());
 		}
 		
 		imgData.close();

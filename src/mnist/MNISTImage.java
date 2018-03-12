@@ -63,7 +63,17 @@ public class MNISTImage implements Classifiable {
 	}
 	
 	@Override
-	public int getClassification() {
+	public Object getClassification() {
 		return this.classification;
+	}
+	@Override
+	public Object toClassification(double[] networkOutput) {
+		int maxIndex = 0;
+		for(int i = 0; i < 10; i ++) {
+			if(networkOutput[i] > networkOutput[maxIndex]) {
+				maxIndex = i;
+			}
+		}
+		return maxIndex;
 	}
 }

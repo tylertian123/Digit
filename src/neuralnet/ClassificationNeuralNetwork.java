@@ -273,7 +273,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	}
 	
 	//Feedforwards and outputs the 'classification' the neural network generates
-	public int classify(T obj) {
+	public Object classify(T obj) {
 		double[] lastActivations = new double[neuronMax];
 		double[] input = obj.asNeuralNetworkInput();
 		for(int i = 0; i < input.length; i ++) {
@@ -289,19 +289,13 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			}
 			lastActivations = activations.clone();
 		}
-		int maxIndex = 0;
-		for(int i = 0; i < 10; i ++) {
-			if(lastActivations[i] > lastActivations[maxIndex]) {
-				maxIndex = i;
-			}
-		}
-		return maxIndex;
+		return obj.toClassification(lastActivations);
 	}
 	//Returns how many images were correctly classified
 	public int evaluate(T[] data) {
 		int total = 0;
 		for(T obj : data)
-			if(this.classify(obj) == obj.getClassification())
+			if(this.classify(obj).equals(obj.getClassification()))
 				total ++;
 		return total;
 	}
