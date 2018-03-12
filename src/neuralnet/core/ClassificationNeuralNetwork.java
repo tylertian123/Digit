@@ -367,29 +367,29 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	
 	/**
 	 * Stochastic gradient descent using L2 regularization.<br>
-	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, null, false)
+	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, null, false)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param epochs - The number of epochs to train for
 	 */
-	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant) {
-		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, null);
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs) {
+		SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, null);
 	}
 	/**
 	 * Stochastic gradient descent using L2 regularization. The performance is evaluated and printed to stdout 
 	 * for each epoch, unless evalData is null.<br>
-	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, evalData, false)
+	 * Equivalent to calling SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, evalData, false)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with
 	 */
-	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData) {
-		SGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, evalData, false);
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData) {
+		SGD(trainingData, batchSize, learningRate, regularizationConstant, epochs, evalData, false);
 	}
 	/**
 	 * Stochastic gradient descent using L2 regularization. The performance is evaluated and printed to stdout 
@@ -397,13 +397,13 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with
 	 * @param generateGraph - If true, generates a classification rate vs time graph.
 	 */
 	@SuppressWarnings("unchecked")
-	public void SGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData, boolean generateGraph) {
+	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		double[] percentages = null;
@@ -468,14 +468,14 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
+	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
 	 * @param outFile - The file to save the final network as. Can be null.
 	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
 	@SuppressWarnings("unchecked")
-	public void SGDAndSave(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, T[] evalData, File outFile) throws IOException {
+	public void SGDAndSave(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData, File outFile) throws IOException {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
 		
@@ -528,16 +528,16 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	}
 	/**
 	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
-	 * Equivalent to calling MomentumSGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, momentumCoefficient, null)
+	 * Equivalent to calling MomentumSGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null)
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
 	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
 	 */
-	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, double momentumCoefficient) {
-		MomentumSGD(trainingData, batchSize, learningRate, epochs, regularizationConstant, momentumCoefficient, null);
+	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs) {
+		MomentumSGD(trainingData, batchSize, learningRate, regularizationConstant, momentumCoefficient, epochs, null);
 	}
 	/**
 	 * Performs stochastic gradient descent with L2 regularization, with momentum.<br>
@@ -545,13 +545,13 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param trainingData - The training data
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
-	 * @param epochs - The number of epochs to train for
 	 * @param regularizationConstant - The regularization constant (lambda)
 	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with
 	 */
 	@SuppressWarnings("unchecked")
-	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, int epochs, double regularizationConstant, double momentumCoefficient, T[] evalData) {
+	public void MomentumSGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, double momentumCoefficient, int epochs, T[] evalData) {
 		double[][][] velocity = createWeightsArray();
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
