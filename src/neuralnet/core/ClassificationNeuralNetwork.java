@@ -43,6 +43,20 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			return 0;
 		}
 	}
+	protected static class TanhActivation implements ActivationFunction {
+		@Override
+		public double activation(double z) {
+			return Math.tanh(z);
+		}
+		@Override
+		public double activationDerivative(double z) {
+			return 1 - Math.pow(Math.tanh(z), 2);
+		}
+		@Override
+		public byte getCode() {
+			return 1;
+		}
+	}
 	protected static class QuadraticCost implements CostFunction {
 		@Override
 		public double costDerivative(double y, double a) {
@@ -69,6 +83,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 */
 	public static final ActivationFunction SIGMOID_ACTIVATION = new SigmoidActivation();
 	/**
+	 * tanh activation function.
+	 */
+	public static final ActivationFunction TANH_ACTIVATION = new TanhActivation();
+	/**
 	 * Simple quadratic cost function.
 	 */
 	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
@@ -79,7 +97,8 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	
 	public static final byte SAVE_FORMAT_VER = 0x01;
 	protected static final ActivationFunction[] ACTIVATION_LIST = new ActivationFunction[] {
-			SIGMOID_ACTIVATION
+			SIGMOID_ACTIVATION,
+			TANH_ACTIVATION
 	};
 	protected static final CostFunction[] COST_LIST	= new CostFunction[] {
 			QUADRATIC_COST,
