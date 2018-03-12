@@ -4,10 +4,10 @@ import mnist.MNISTLoader;
 
 import java.io.File;
 
-import mnist.DatabaseExpander;
+//import mnist.DatabaseExpander;
 import mnist.MNISTImage;
-import neuralnet.ClassificationNeuralNetwork;
-import neuralnet.CompositeClassifier;
+import neuralnet.classification.CompositeClassifier;
+import neuralnet.core.ClassificationNeuralNetwork;
 
 public class DigitRecognitionBasic {
 
@@ -33,7 +33,7 @@ public class DigitRecognitionBasic {
 					new int[] { MNISTImage.PIXEL_COUNT, 50, 10 },
 					ClassificationNeuralNetwork.SIGMOID_ACTIVATION,
 					ClassificationNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			net.SGD(trainingImages, 5, 0.5, 20, 5.0, testingImages);
+			net.MomentumSGD(trainingImages, 5, 0.5, 20, 5.0, 0.2, testingImages);
 		} 
 		catch (Exception e) {
 			e.printStackTrace();

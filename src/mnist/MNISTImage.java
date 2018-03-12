@@ -1,6 +1,6 @@
 package mnist;
 
-import neuralnet.Classifiable;
+import neuralnet.core.Classifiable;
 
 /*
  * A training/evaluation image
