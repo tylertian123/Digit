@@ -57,6 +57,20 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			return 1;
 		}
 	}
+	protected static class RectifiedLinearActivation implements ActivationFunction {
+		@Override
+		public double activation(double z) {
+			return Math.max(0, z);
+		}
+		@Override
+		public double activationDerivative(double z) {
+			return z >= 0 ? 1 : 0;
+		}
+		@Override
+		public byte getCode() {
+			return 2;
+		}
+	}
 	protected static class QuadraticCost implements CostFunction {
 		@Override
 		public double costDerivative(double y, double a) {
@@ -87,6 +101,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 */
 	public static final ActivationFunction TANH_ACTIVATION = new TanhActivation();
 	/**
+	 * Rectified linear activation function.
+	 */
+	public static final ActivationFunction RECTIFIED_LINEAR_ACTIVATION = new RectifiedLinearActivation();
+	/**
 	 * Simple quadratic cost function.
 	 */
 	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
@@ -98,7 +116,8 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	public static final byte SAVE_FORMAT_VER = 0x01;
 	protected static final ActivationFunction[] ACTIVATION_LIST = new ActivationFunction[] {
 			SIGMOID_ACTIVATION,
-			TANH_ACTIVATION
+			TANH_ACTIVATION,
+			RECTIFIED_LINEAR_ACTIVATION
 	};
 	protected static final CostFunction[] COST_LIST	= new CostFunction[] {
 			QUADRATIC_COST,
@@ -178,6 +197,16 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		//First layer contains no weights, so each neuron is connected to 0 others
 		sizes2[0] = 0;
 		return createJaggedArray3d(neuronCounts, sizes2);
+	}
+	/**
+	 * Creates a 2-dimensional boolean array used to store if a neuron is dropped out.
+	 * @return An empty 2-dimensional boolean array in the shape of the biases matrix
+	 */
+	protected boolean[][] createDropoutsArray() {
+		boolean[][] arr = new boolean[neuronCounts.length][];
+		for(int i = 0; i < arr.length; i ++)
+			arr[i] = new boolean[neuronCounts[i]];
+		return arr;
 	}
 	/**
 	 * Creates a 2-dimensional array in the shape of the biases matrix.
@@ -583,6 +612,82 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
 	}
 	/**
+	 * Performs stochastic gradient descent with momentum and dropout.<br>
+	 * Same as calling dropoutSGD(trainingData, batchSize, learningRate, dropoutRate, momentumCoefficient, epochs, null)
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param learningRate - The learning rate (eta)
+	 * @param dropoutRate - A real number between 0 and 1, the probability that a neuron will be dropped out
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
+	 */
+	public void dropoutSGD(T[] trainingData, int batchSize, double learningRate, double dropoutRate, double momentumCoefficient, int epochs) {
+		dropoutSGD(trainingData, batchSize, learningRate, dropoutRate, momentumCoefficient, epochs, null);
+	}
+	/**
+	 * Performs stochastic gradient descent with momentum and dropout.
+	 * The performance of the network is also evaluated and printed to stdout after each epoch if evalData is not null. <br>
+	 * <br>
+	 * Since neurons trained with dropout are accustomed to having only a part of the hidden neurons as input,
+	 * the activations of hidden neurons or their outgoing weights need to be scaled down so the network can 
+	 * properly function. However this is done automatically at the end of the training procedure, so a network
+	 * trained this way can still use the normal methods.
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param learningRate - The learning rate (eta)
+	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param epochs - The number of epochs to train for
+	 * @param evalData - The data to evaluate the network's performance with. Can be null.
+	 */
+	public void dropoutSGD(T[] trainingData, int batchSize, double learningRate, double dropoutRate, double momentumCoefficient, int epochs, T[] evalData) {
+		//First scale the weights back up since we're only going to have partial neurons
+		scaleDropoutWeights(dropoutRate);
+		
+		double[][][] velocity = createWeightsArray();
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
+		double[] percentages = new double[epochs];
+		
+		for(int epoch = 1; epoch <= epochs; epoch ++) {
+			List<T> l = Arrays.asList(trainingData);
+			Collections.shuffle(l);
+			
+			if(evalData != null) {
+				System.out.println("Epoch #" + epoch);
+				System.out.println("Learning...");
+			}
+			
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
+				learnFromMiniBatchDropout(miniBatch, learningRate, velocity, momentumCoefficient, dropoutRate);
+			}
+			
+			if(evalData != null) {
+				//Reduce each weight before testing
+				reduceDropoutWeights(dropoutRate);
+				System.out.println("Evaluating...");
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+				System.out.println(percentage + "% correctly classified.");
+				if(percentage > maxPercentage) {
+					maxPercentage = percentage;
+					maxEpoch = epoch;
+				}
+				percentages[epoch - 1] = percentage;
+				//Scale the weights back up
+				scaleDropoutWeights(dropoutRate);
+			}
+		}
+		if(evalData != null)
+			System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		//Reduce the weights so we have a normal neural network
+		reduceDropoutWeights(dropoutRate);
+	}
+	/**
 	 * Performs stochastic gradient descent with L2 regularization and saves the best network.<br>
 	 * After each training epoch, the data of the network is stored as a temporary file that is deleted when the VM exits.
 	 * When the training is finished, the network will load and make permanent the temporary file that stores the network with the best
@@ -925,8 +1030,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 				//Skip input layer
 				for(int i = 1; i < layers; i ++) {
 					for(int j = 0; j < neuronCounts[i]; j ++) {
+						//dC/db_ij = err_ij * 1
 						biasDerivativesTotal[i][j] += e[i][j];
 						for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+							//dC/dw_ijk = err_ij * a_(i-1)k
 							weightDerivativesTotal[i][j][k] = e[i][j] * a[i - 1][k];
 						}
 					}
@@ -963,6 +1070,184 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 						weights[i][j][k] = weights[i][j][k] * (1 - learningRate * regularizationConstant / dataSize)
 								- learningRate * weightDerivativesTotal[i][j][k];
 					}
+				}
+			}
+		}
+	}
+	/**
+	 * Applies a single step of gradient descent with momentum and dropout regularization.
+	 * Note that since neurons learned with only part of the network, during testing each weight outgoing from
+	 * hidden neurons must be scaled down appropriately using reduceDropoutWeights().
+	 * @param miniBatch - The mini-batch to learn from
+	 * @param learningRate - The learning rate (eta)
+	 * @param velocity - A 3-dimensional array in the shape of the weights matrix. Each element represent the "velocity"
+	 * of that weight. This array is updated in the process. If null, momentum is not applied.
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param dropoutRate - A real number between 0 and 1, the chance of a neuron being dropped out
+	 */
+	protected void learnFromMiniBatchDropout(T[] miniBatch, double learningRate, double[][][] velocity, double momentumCoefficient, double dropoutRate) {
+		//The size of the batch
+		//Only incremented for values that are non-null
+		int batchSize = 0;
+		//Summed dC/db and dC/dw
+		double[][] biasDerivativesTotal = createBiasesArray();
+		double[][][] weightDerivativesTotal = createWeightsArray();
+		
+		//Whether a neuron is dropped out
+		boolean[][] d = createDropoutsArray();
+		//Drop out each neuron with a certain probability
+		//Skip the input and output layers
+		for(int i = 1; i < layers - 1; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				if(Math.random() <= dropoutRate)
+					d[i][j] = true;
+			}
+		}
+		
+		for(T trainingSample : miniBatch) {
+			if(trainingSample != null) {
+				batchSize ++;
+				//Expected output
+				double[] y = trainingSample.generateExpectedOutput();
+				//Activations
+				double[][] a = createBiasesArray();
+				//Weighted sums
+				double[][] z = createBiasesArray();
+				//Errors
+				double[][] e = createBiasesArray();
+				
+				//Feedforward
+				a[0] = trainingSample.asNeuralNetworkInput();
+				for(int i = 1; i < layers; i ++) {
+					for(int j = 0; j < neuronCounts[i]; j ++) {
+						//Only calculate for this neuron if it's not dropped out
+						//As doubles default to 0.0, when calculating the next layer's weighted sums these neurons will behave as if they aren't there
+						if(!d[i][j]) {
+							//Dot product of last layer's activations with this layer's weights added to the bias 
+							z[i][j] = dotProduct(a[i - 1], weights[i][j]) + biases[i][j];
+							//Put through the activation function
+							a[i][j] = activationFunction.activation(z[i][j]);
+						}
+					}
+				}
+				
+				//Calculate error for output layer
+				//This part is not affected by dropout and thus remains the same
+				for(int j = 0; j < neuronCounts[layers - 1]; j ++) {
+					//The error for a neuron in the output layer =
+					//activation'(z) * dC/da
+					e[layers - 1][j] = activationFunction.activationDerivative(z[layers - 1][j])
+							* costFunction.costDerivative(y[j], a[layers - 1][j]);
+				}
+				
+				//Backpropagate
+				for(int i = layers - 2; i >= 0; i --) {
+					for(int j = 0; j < neuronCounts[i]; j ++) {
+						//Skip dropped out neurons
+						if(!d[i][j]) {
+							//Perform the sigma
+							double err = 0.0;
+							for(int k = 0; k < neuronCounts[i + 1]; k ++) {
+								//Skip any dropped out neurons
+								if(!d[i + 1][k])
+									//The error of a neuron in the next layer * the weight connecting them
+									err += e[i + 1][k] * weights[i + 1][k][j];
+							}
+							//dC/da * da/dz = dC/dz
+							err *= activationFunction.activationDerivative(z[i][j]);
+							e[i][j] = err;
+						}
+					}
+				}
+				
+				//Calculate the weight and bias derivatives and add to total
+				//Skip input layer and dropped out layers
+				for(int i = 1; i < layers; i ++) {
+					for(int j = 0; j < neuronCounts[i]; j ++) {
+						if(!d[i][j]) {
+							//dC/db_ij = err_ij * 1
+							biasDerivativesTotal[i][j] += e[i][j];
+							for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+								if(!d[i - 1][k])
+									//dC/dw_ijk = err_ij * a_(i-1)k
+									weightDerivativesTotal[i][j][k] = e[i][j] * a[i - 1][k];
+							}
+						}
+					}
+				}
+			}
+			
+			//Divide to take the average, skip dropped out neurons
+			for(int i = 1; i < layers; i ++) {
+				for(int j = 0; j < neuronCounts[i]; j ++) {
+					if(!d[i][j]) {
+						biasDerivativesTotal[i][j] /= (double)batchSize;
+						for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+							if(!d[i - 1][k])
+								weightDerivativesTotal[i][j][k] /= (double)batchSize;
+						}
+					}
+				}
+			}
+			
+			//Update the new weights and biases, and once again skipping dropped out neurons and their connections
+			for(int i = 1; i < layers; i ++) {
+				for(int j = 0; j < neuronCounts[i]; j ++) {
+					if(!d[i][j]) {
+						//b -> b' = b - eta * gradient
+						biases[i][j] = biases[i][j] - learningRate * biasDerivativesTotal[i][j];
+						for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+							if(!d[i - 1][k]) {
+								//Calculate momentum if the velocity matrix is not null
+								if(velocity != null) {
+									//v -> v' = mu * v - eta * gradient
+									velocity[i][j][k] = momentumCoefficient * velocity[i][j][k]
+											- learningRate * weightDerivativesTotal[i][j][k];
+									//w -> w' = w * (1 - (eta * lambda / n)) + v
+									weights[i][j][k] = weights[i][j][k] 
+											+ velocity[i][j][k];
+								}
+								else {
+									//w -> w' = w * (1 - (eta * lambda / n)) - eta * gradient
+									weights[i][j][k] = weights[i][j][k]
+											- learningRate * weightDerivativesTotal[i][j][k];
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	/**
+	 * Reduces every weight that connects from a hidden neuron by a factor.
+	 * Used in dropout regularization.
+	 * @param factor - The factor to reduce by. Each weight is <em>multiplied</em> by (1 - factor). 
+	 * E.g. If factor is 0.2, each weight will be multiplied by 0.8.
+	 */
+	protected void reduceDropoutWeights(double factor) {
+		double multiplier = 1 - factor;
+		//Start from the 2nd hidden layer and end at the output layer
+		for(int i = 2; i < layers; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+					weights[i][j][k] *= multiplier;
+				}
+			}
+		}
+	}
+	/**
+	 * Does the opposite of reduceDropoutWeights. Instead of reducing, this function scales each weight up.
+	 * @param factor - The factor to scale by. Each weight is <em>divided</em> by (1 - factor). 
+	 * E.g. If factor is 0.2, each weight will be divided by 0.8.
+	 */
+	protected void scaleDropoutWeights(double factor) {
+		double multiplier = 1 - factor;
+		//Start from the 2nd hidden layer and end at the output layer
+		for(int i = 2; i < layers; i ++) {
+			for(int j = 0; j < neuronCounts[i]; j ++) {
+				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
+					weights[i][j][k] /= multiplier;
 				}
 			}
 		}
