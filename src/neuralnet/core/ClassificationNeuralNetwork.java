@@ -486,6 +486,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param evalData - The data to evaluate the network's performance with
 	 * @param generateGraph - If true, generates a classification rate vs time graph.
 	 */
+	@Deprecated
 	public void SGD(T[] trainingData, int batchSize, double learningRate, double regularizationConstant, int epochs, T[] evalData, boolean generateGraph) {
 		double maxPercentage = 0.0;
 		int maxEpoch = -1;
@@ -618,7 +619,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
 	 * @param dropoutRate - A real number between 0 and 1, the probability that a neuron will be dropped out
-	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param momentumCoefficient - The momentum coefficient (mu); a value of 0 indicates no momentum
 	 * @param epochs - The number of epochs to train for
 	 */
 	public void dropoutSGD(T[] trainingData, int batchSize, double learningRate, double dropoutRate, double momentumCoefficient, int epochs) {
@@ -636,7 +637,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param batchSize - The size of each mini-batch
 	 * @param learningRate - The learning rate (eta)
 	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
-	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param momentumCoefficient - The momentum coefficient (mu); a value of 0 indicates no momentum
 	 * @param epochs - The number of epochs to train for
 	 * @param evalData - The data to evaluate the network's performance with. Can be null.
 	 */
@@ -664,7 +665,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 				@SuppressWarnings("unchecked")
 				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
 				miniBatchList.toArray(miniBatch);
-				learnFromMiniBatchDropout(miniBatch, learningRate, velocity, momentumCoefficient, dropoutRate);
+				if(momentumCoefficient != 0)
+					learnFromMiniBatchDropout(miniBatch, learningRate, velocity, momentumCoefficient, dropoutRate);
+				else
+					learnFromMiniBatchDropout(miniBatch, learningRate, null, momentumCoefficient, dropoutRate);
 			}
 			
 			if(evalData != null) {
@@ -823,6 +827,82 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		}
 	}
 	/**
+	 * Performs stochastic gradient descent with dropout and momentum and saves the best network.<br>
+	 * After each training epoch, the data of the network is stored as a temporary file that is deleted when the VM exits.
+	 * When the training is finished, the network will load and make permanent the temporary file that stores the network with the best
+	 * performance compared to all other epochs, even if it might not be the network from the last epoch.
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param learningRate - The learning rate (eta)
+	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
+	 * @param momentumCoefficient - The momentum coefficient (mu); a value of 0 indicates there's no momentum
+	 * @param epochs - The number of epochs to train for
+	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
+	 * @param outFile - The file to save the final network as. Can be null.
+	 * @throws IOException If saving the temporary files or the final file is unsuccessful
+	 */
+	public void dropoutSGDAndSave(T[] trainingData, int batchSize, double learningRate, double dropoutRate, double momentumCoefficient, int epochs, T[] evalData, File outFile) throws IOException {
+		double[][][] velocity = createWeightsArray();
+		
+		double maxPercentage = 0.0;
+		int maxEpoch = -1;
+		
+		File[] netData = new File[epochs];
+		
+		System.out.println("No Training:\nEvaluating...");
+		double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+		System.out.println(percentage + "% correctly classified.");
+		scaleDropoutWeights(dropoutRate);
+		
+		for(int epoch = 1; epoch <= epochs; epoch ++) {
+			List<T> l = Arrays.asList(trainingData);
+			Collections.shuffle(l);
+
+			System.out.println("Epoch #" + epoch);
+			System.out.println("Learning...");
+			
+			//Separate the shuffled training samples into mini-batches and train with each mini-batch
+			for(int i = 0; i < trainingData.length; i += batchSize) {
+				List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+				@SuppressWarnings("unchecked")
+				T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
+				miniBatchList.toArray(miniBatch);
+				if(momentumCoefficient != 0)
+					learnFromMiniBatchDropout(miniBatch, learningRate, velocity, momentumCoefficient, dropoutRate);
+				else
+					learnFromMiniBatchDropout(miniBatch, learningRate, null, 0, dropoutRate);
+			}
+			
+			System.out.println("Evaluating...");
+			//Save the reduced copy
+			reduceDropoutWeights(dropoutRate);
+			percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+			System.out.println(percentage + "% correctly classified.");
+			if(percentage > maxPercentage) {
+				maxPercentage = percentage;
+				maxEpoch = epoch;
+			}
+			File f = File.createTempFile("tmpnet", null);
+			saveData(f);
+			netData[epoch - 1] = f;
+			f.deleteOnExit();
+			scaleDropoutWeights(dropoutRate);
+		}
+		System.out.printf("Max classification rate: %f%%, reached at Epoch #%d", maxPercentage, maxEpoch);
+		if(outFile != null) {
+			if(outFile.exists())
+				outFile.delete();
+			Files.copy(netData[maxEpoch - 1].toPath(), outFile.toPath());
+		}
+		
+		try {
+			this.loadFile(netData[maxEpoch - 1]);
+		} 
+		catch (NeuralNetworkException e) {
+			System.err.println("Unexpected exception in SGDAndSave(): " + e.toString());
+		}
+	}
+	/**
 	 * Performs stochastic gradient descent with L2 regularization with a changing/scheduled learning rate.
 	 * For each "cycle", the network learns and is evaluated. If there is no improvement for a certain
 	 * number of epochs, the learning rate is multiplied by a factor and the next cycle starts.
@@ -953,6 +1033,98 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		}
 		System.out.printf("Training finished.\nAll-time best was %f%% at Cycle #%d, Epoch #%d.\n", allTimeBest, bestCycle, bestEpoch);
 	}
+	/**
+	 * Performs stochastic gradient descent with dropout and a changing/scheduled learning rate.<br>
+	 * For each "cycle", the network learns and is evaluated. If there is no improvement for a certain
+	 * number of epochs, the learning rate is multiplied by a factor and the next cycle starts.<br>
+	 * Equivalent to calling scheduledDropoutSGD(trainingData, batchSize, initLearningRate, dropoutRate, 0, evalData, schedule, newRateFactor, cycles)
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param initLearningRate - The initial learning rate (eta)
+	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
+	 * @param evalData - The data to evaluate the network's performance with. Cannot be null.
+	 * @param schedule - The number of epochs with no performance increase before moving to the next cycle
+	 * @param newRateFactor - The scalar the learning rate is multiplied by for each cycle
+	 * @param cycles - The number of cycles to continue for
+	 */
+	public void scheduledDropoutSGD(T[] trainingData, int batchSize, double initLearningRate, double dropoutRate, T[] evalData, int schedule, double newRateFactor, int cycles) {
+		scheduledDropoutSGD(trainingData, batchSize, initLearningRate, dropoutRate, 0, evalData, schedule, newRateFactor, cycles);
+	}
+	/**
+	 * Performs stochastic gradient descent with momentum and dropout and a changing/scheduled learning rate.<br>
+	 * For each "cycle", the network learns and is evaluated. If there is no improvement for a certain
+	 * number of epochs, the learning rate is multiplied by a factor and the next cycle starts.<br>
+	 * A value of 0 for the momentumCoefficient means no momentum.
+	 * @param trainingData - The training data
+	 * @param batchSize - The size of each mini-batch
+	 * @param initLearningRate - The initial learning rate (eta)
+	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
+	 * @param momentumCoefficient - The momentum coefficient (mu)
+	 * @param evalData - The data to evaluate the network's performance with. Cannot be null.
+	 * @param schedule - The number of epochs with no performance increase before moving to the next cycle
+	 * @param newRateFactor - The scalar the learning rate is multiplied by for each cycle
+	 * @param cycles - The number of cycles to continue for
+	 */
+	public void scheduledDropoutSGD(T[] trainingData, int batchSize, double initLearningRate, double dropoutRate, double momentumCoefficient, T[] evalData, int schedule, double newRateFactor, int cycles) {
+		scaleDropoutWeights(dropoutRate);
+		double[][][] velocity = createWeightsArray();
+		
+		int epoch = 1;
+		double eta = initLearningRate;
+		int lastMaxEpoch = 1;
+		double lastMaxRate = 0.0;
+		
+		double allTimeBest = 0.0;
+		int bestCycle = -1;
+		int bestEpoch = -1;
+		
+		for(int cycle = 1; cycle <= cycles; cycle ++) {
+			System.out.printf("Cycle #%d (eta = %f):\n", cycle, eta);
+			while(true) {
+				List<T> l = Arrays.asList(trainingData);
+				Collections.shuffle(l);
+				System.out.printf("Cycle #%d, Epoch #%d:\nLearning...\n", cycle, epoch);
+				
+				for(int i = 0; i < trainingData.length; i += batchSize) {
+					List<T> miniBatchList = l.subList(i, Math.min(i + batchSize, l.size()));
+					@SuppressWarnings("unchecked")
+					T[] miniBatch = (T[]) new Classifiable[miniBatchList.size()];
+					miniBatchList.toArray(miniBatch);
+					if(momentumCoefficient != 0)
+						learnFromMiniBatchDropout(miniBatch, eta, velocity, momentumCoefficient, dropoutRate);
+					else
+						learnFromMiniBatchDropout(miniBatch, eta, null, momentumCoefficient, dropoutRate);
+				}
+				
+				reduceDropoutWeights(dropoutRate);
+				double percentage = ((double) this.evaluate(evalData)) / evalData.length * 100;
+				scaleDropoutWeights(dropoutRate);
+				System.out.printf("%f%% correctly classified.\n", percentage);
+				if(percentage > allTimeBest) {
+					allTimeBest = percentage;
+					bestCycle = cycle;
+					bestEpoch = epoch;
+				}
+				if(percentage > lastMaxRate) {
+					lastMaxRate = percentage;
+					lastMaxEpoch = epoch;
+				}
+				else {
+					if(epoch - lastMaxEpoch >= schedule) {
+						lastMaxEpoch = 1;
+						lastMaxRate = 0.0;
+						epoch = 1;
+						break;
+					}
+				}
+				epoch ++;
+			}
+			
+			eta *= newRateFactor;
+		}
+		reduceDropoutWeights(dropoutRate);
+		System.out.printf("Training finished.\nAll-time best was %f%% at Cycle #%d, Epoch #%d.\n", allTimeBest, bestCycle, bestEpoch);
+	}
 	
 	/**
 	 * Applies a single step of gradient descent with L2 regularization. <br>
@@ -1044,9 +1216,9 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 		//Divide to take the average
 		for(int i = 1; i < layers; i ++) {
 			for(int j = 0; j < neuronCounts[i]; j ++) {
-				biasDerivativesTotal[i][j] /= (double)batchSize;
+				biasDerivativesTotal[i][j] /= batchSize;
 				for(int k = 0; k < neuronCounts[i - 1]; k ++) {
-					weightDerivativesTotal[i][j][k] /= (double)batchSize;
+					weightDerivativesTotal[i][j][k] /= batchSize;
 				}
 			}
 		}
@@ -1181,10 +1353,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			for(int i = 1; i < layers; i ++) {
 				for(int j = 0; j < neuronCounts[i]; j ++) {
 					if(!d[i][j]) {
-						biasDerivativesTotal[i][j] /= (double)batchSize;
+						biasDerivativesTotal[i][j] /= batchSize;
 						for(int k = 0; k < neuronCounts[i - 1]; k ++) {
 							if(!d[i - 1][k])
-								weightDerivativesTotal[i][j][k] /= (double)batchSize;
+								weightDerivativesTotal[i][j][k] /= batchSize;
 						}
 					}
 				}

@@ -29,7 +29,8 @@ public class DigitRecognitionBasic {
 					new int[] { MNISTImage.PIXEL_COUNT, 50, 10 },
 					ClassificationNeuralNetwork.SIGMOID_ACTIVATION,
 					ClassificationNeuralNetwork.CROSSENTROPY_SIGMOID_COST);
-			net.scheduledSGD(trainingImages, 3, 0.20, 0.5, 0.6, testingImages, 3, 0.5, 4);
+			//net.scheduledSGD(trainingImages, 3, 0.20, 0.5, 0.6, testingImages, 3, 0.5, 4);
+			net.dropoutSGD(trainingImages, 3, 0.20, 0.5, 0.3, 30, testingImages);
 		} 
 		catch (Exception e) {
 			e.printStackTrace();
