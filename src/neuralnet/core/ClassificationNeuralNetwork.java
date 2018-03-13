@@ -701,7 +701,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param learningRate - The learning rate (eta)
 	 * @param regularizationConstant - The regularization constant (lambda)
 	 * @param epochs - The number of epochs to train for
-	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
+	 * @param evalData - The data to evaluate the network's performance with. Unlike SGD(), it cannot be null.
 	 * @param outFile - The file to save the final network as. Can be null.
 	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
@@ -768,7 +768,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param regularizationConstant - The regularization constant (lambda)
 	 * @param momentumCoefficient - The momentum coefficient (mu)
 	 * @param epochs - The number of epochs to train for
-	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
+	 * @param evalData - The data to evaluate the network's performance with. Unlike SGD(), it cannot be null.
 	 * @param outFile - The file to save the final network as. Can be null.
 	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
@@ -837,7 +837,7 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 * @param dropoutRate - A real number from 0 to 1, the probability that a neuron will be dropped out
 	 * @param momentumCoefficient - The momentum coefficient (mu); a value of 0 indicates there's no momentum
 	 * @param epochs - The number of epochs to train for
-	 * @param evalData - The data to evaluate the network's performace with. Unlike SGD(), it cannot be null.
+	 * @param evalData - The data to evaluate the network's performance with. Unlike SGD(), it cannot be null.
 	 * @param outFile - The file to save the final network as. Can be null.
 	 * @throws IOException If saving the temporary files or the final file is unsuccessful
 	 */
