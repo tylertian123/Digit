@@ -71,6 +71,21 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 			return 2;
 		}
 	}
+	protected static class LeakyRectifiedLinearActivation implements ActivationFunction {
+		@Override
+		public double activation(double z) {
+			return z > 0 ? z : 0.01 * z;
+		}
+		@Override
+		public double activationDerivative(double z) {
+			return z >= 0 ? 1 : 0.01;
+		}
+		@Override
+		public byte getCode() {
+			return 3;
+		}
+		
+	}
 	protected static class QuadraticCost implements CostFunction {
 		@Override
 		public double costDerivative(double y, double a) {
@@ -105,6 +120,10 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	 */
 	public static final ActivationFunction RECTIFIED_LINEAR_ACTIVATION = new RectifiedLinearActivation();
 	/**
+	 * Leaky rectified linear activation function.
+	 */
+	public static final ActivationFunction LEAKY_RECTIFIED_LINEAR_ACTIVATION = new LeakyRectifiedLinearActivation();
+	/**
 	 * Simple quadratic cost function.
 	 */
 	public static final CostFunction QUADRATIC_COST = new QuadraticCost();
@@ -117,7 +136,8 @@ public class ClassificationNeuralNetwork<T extends Classifiable> implements Clon
 	protected static final ActivationFunction[] ACTIVATION_LIST = new ActivationFunction[] {
 			SIGMOID_ACTIVATION,
 			TANH_ACTIVATION,
-			RECTIFIED_LINEAR_ACTIVATION
+			RECTIFIED_LINEAR_ACTIVATION,
+			LEAKY_RECTIFIED_LINEAR_ACTIVATION
 	};
 	protected static final CostFunction[] COST_LIST	= new CostFunction[] {
 			QUADRATIC_COST,
